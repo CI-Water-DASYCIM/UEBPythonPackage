@@ -1,11 +1,13 @@
 #-------------------------------------------------------------------------------
-# Name:         GenerateWatershedDaymetMultipleRHDataPerDay.py
-# Purpose:      Generates multiple rh data points per day from a single data point per day
+# Name:     GenerateWatershedDaymetMultipleRHDataPerDay.py
+# Author:   Pabitra Dash (pabitra.dash@usu.edu)
 #
-# Author:      Pabitra
+# Purpose:
+#   Generates multiple rh data points per day and writes to a netcdf file using
+#   a single data point per day from a input netcdf file
 #
 # Created:     25/02/2013
-# Copyright:   (c) Pabitra 2013
+# Copyright:   (c) 2013
 # Licence:     <your licence>
 #-------------------------------------------------------------------------------
 from netCDF4 import Dataset
@@ -40,7 +42,8 @@ outRootGrp = None
 inRootGrpTa = None
 inRootGrpVp = None
 
-# settings for runnning this code locally. To run this code on remote app server comment out the following 8 lines
+# settings for runnning this code locally. To run this code on remote app server comment out the following 9 lines
+# To run locally, uncomment the following 9 lines
 ##argumentList = []
 ##argumentList.append('') #this argument is reserved for the name of this script file
 ##argumentList.append(r'E:\CIWaterData\Temp\ta_daily_multiple_data.nc')
@@ -77,23 +80,23 @@ try:
 
     # check the netcdf vpd data file exists
     if(os.path.isfile(sourceVpdNetCDFFile) == False):
-        raise Exception("Watershed vapor presssure netcdf input file " + sourceVpdNetCDFFile +  " was not found.")
+        raise Exception("Watershed vapor presssure netcdf input file ({0}) was not found.".format(sourceVpdNetCDFFile))
         exit()
 
     # check the netcdf temp data file exists
     if(os.path.isfile(sourceTaNetCDFile) == False):
-        raise Exception("Watershed temperature netcdf input file " + sourceTaNetCDFile +  " was not found.")
+        raise Exception("Watershed temperature netcdf input file ({0}) was not found.".format(sourceTaNetCDFile))
         exit()
 
-    #check if the output netcdf file temporary directory exists
+    # check if the output netcdf file temporary directory exists
     filePath = os.path.dirname(outRH_NetCDFFile)
     if(os.path.isdir(filePath) == False):
-        raise Exception("Netcdf output temporary directory " + filePath +  " was not found.")
+        raise Exception("Netcdf output temporary directory ({0}) was not found.".format(filePath))
         exit()
 
     # check the netcdf final output directory exists
     if(os.path.isdir(destNetCDF_FilePath) == False):
-        raise Exception("Destination Netcdf output directory " + destNetCDF_FilePath +  " was not found.")
+        raise Exception("Destination Netcdf output directory ({0}) was not found.".format(destNetCDF_FilePath))
         exit()
 
     # validate input time step value
@@ -107,11 +110,11 @@ try:
     inTaFilePath = os.path.dirname(sourceTaNetCDFile)
     inVpFilePath = os.path.dirname(sourceVpdNetCDFFile)
 
-    #open the netCDF file that has temp data. Open in readonly mode based on which we will be creating a new netcdf file
-    inRootGrpTa= Dataset(sourceTaNetCDFile, 'r', format='NETCDF4')
+    # open the netCDF file that has temp data. Open in readonly mode based on which we will be creating a new netcdf file
+    inRootGrpTa= Dataset(sourceTaNetCDFile, 'r', format='NETCDF3_CLASSIC')
 
-    #open the netCDF file that has vp data. Open in readonly mode based on which we will be creating a new netcdf file
-    inRootGrpVp = Dataset(sourceVpdNetCDFFile, 'r', format='NETCDF4')
+    # open the netCDF file that has vp data. Open in readonly mode based on which we will be creating a new netcdf file
+    inRootGrpVp = Dataset(sourceVpdNetCDFFile, 'r', format='NETCDF3_CLASSIC')
 
     # check the input time step for the output rh netcdf file is same as the
     # time step used in the input vp and temp files
@@ -132,10 +135,8 @@ try:
     print('Dimension of Temp var: ' + str(inputTaVar.shape))
     print('Dimension of Vp var: ' + str(inputVpVar.shape))
 
-
     #open a new blank netcdf file to which we will be writting data
-    outRootGrp = Dataset(outRH_NetCDFFile, 'w', format='NETCDF4')
-
+    outRootGrp = Dataset(outRH_NetCDFFile, 'w', format='NETCDF3_CLASSIC')
 
     # add global file level attributes to the new netcdf file
     outRootGrp.start_year = inRootGrpTa.start_year
@@ -147,7 +148,7 @@ try:
     outRootGrp.spatial_reference = 'NAD83_UTM_Zone_12N'
     outRootGrp.datum = 'D_North_America_1983'
 
-     # Create 3 dimensions
+     # create 3 dimensions
     outTimeDimensionSize = inputVpVar.shape[0]
     outYvarDimensionSize = inputVpVar.shape[1]
     outXvarDimensionSize = inputVpVar.shape[2]
@@ -156,16 +157,16 @@ try:
     outRootGrp.createDimension('x', outXvarDimensionSize)
     outRootGrp.createDimension('y', outYvarDimensionSize)
 
-    #print each dimension name, dimension length
+    # print each dimension name, dimension length
     for dimName, dimObj in outRootGrp.dimensions.iteritems():
         print dimName, len(dimObj)
 
 
-    # create a RH variable of data type f4 that has data in all three dimensions
+    # create a RH variable of data type f4 (32-bit floating point) that has data in all three dimensions
     vRH= outRootGrp.createVariable(outRootGrp.data_variable_name, 'f4',('time', 'y', 'x'))
     # create a variable for each dimension to hold data for that specific dimension
-    vTime = outRootGrp.createVariable('time', 'f8', ('time'))
-    vX = outRootGrp.createVariable('x', 'f4', ('x'))
+    vTime = outRootGrp.createVariable('time', 'f8', ('time'))   #f8 64-bit floating point
+    vX = outRootGrp.createVariable('x', 'f4', ('x'))            #f4: 32-bit floating point
     vY = outRootGrp.createVariable('y', 'f4', ('y'))
 
     print(vRH.shape)
@@ -197,12 +198,10 @@ try:
     # assign data to output x variable same as the input x data
     vX[:] = inputTaXVar[:]
 
-##    print(vX[:])
-
     # assign data to output y variable same as the input y data
     vY[:] = inputTaYVar[:]
 
-    #assign data to output time variable same as the input time data
+    # assign data to output time variable same as the input time data
     vTime[:]  = inputVpTimeVar
     times, cols, rows = inputVpVar.shape
 
@@ -212,11 +211,11 @@ try:
     for time_step in range(0, times):
         outRhDataArray = numpy.empty((1,cols, rows), dtype=numpy.float32)
 
-        #create an empty 3D array to hold slice of the input temperature data array
+        # create an empty 3D array to hold slice of the input temperature data array
         inTaDataSlice = numpy.empty((1, cols, rows), dtype=numpy.float32)
         inTaDataSlice[:] = inputTaVar[time_step:time_step+1, 0:cols, 0:rows]
 
-        #create an empty 3D array to hold slice of the input vpd data array
+        # create an empty 3D array to hold slice of the input vpd data array
         inVpDataSlice = numpy.empty((1, cols, rows), dtype=numpy.float32)
         inVpDataSlice[:] = inputVpVar[time_step:time_step+1, 0:cols, 0:rows]
 
@@ -225,13 +224,13 @@ try:
                 ta = inTaDataSlice[0][col][row]
                 vpd = inVpDataSlice[0][col][row]
 
-                #calculate saturated vapor pressure (units Pa)
+                # calculate saturated vapor pressure (units Pa)
                 sVp = 611 * math.exp((17.3 * ta) /(237.3 + ta))
                 rh = 1 - (vpd / sVp)
 
                 outRhDataArray[0][col][row] = rh
 
-        # write the Vp data to the output netcdf file
+        # write the RH data to the output netcdf file
         vRH[time_step:time_step+1, 0:cols, 0:rows] = outRhDataArray[0:1, 0:cols, 0:rows]
 
     end_time = time.clock()

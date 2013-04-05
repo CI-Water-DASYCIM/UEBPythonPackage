@@ -10,7 +10,7 @@
 # Licence:     <your licence>
 #-------------------------------------------------------------------------------
 # Import of arcview is necessary prior to importing arcpy
-##import arcview
+import arcview
 import arcpy
 import os
 import glob
@@ -26,7 +26,7 @@ bufferedWatreshedFile = None
 rasterWatershedFilePath = None
 netCDFWatershedFile = None
 bufferSize = 500
-variable = "elevation"
+variable = "watershed"
 units = "meter"
 XDimension = "x"
 YDimension = "y"

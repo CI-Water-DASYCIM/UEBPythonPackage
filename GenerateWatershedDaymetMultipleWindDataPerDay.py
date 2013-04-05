@@ -1,12 +1,12 @@
 #-------------------------------------------------------------------------------
-# Name:         GenerateWatershedDaymetMultipleWindDataPerDay.py
-# Purpose:      To generate a gridded netcdf file containing constant wind speed data based on the
-#               data for grid varaiable x, y and time from the prep netcdf file
-#
-# Author:      Pabitra
+# Name:     GenerateWatershedDaymetMultipleWindDataPerDay.py
+# Author:   Pabitra Dash (pabitra.dash@usu.edu)
+# Purpose:
+#   To generate a gridded netcdf file containing constant wind speed data based on the
+#   data for grid varaiable x, y and time from the prep netcdf file
 #
 # Created:     21/02/2013
-# Copyright:   (c) Pabitra 2013
+# Copyright:   (c) 2013
 # Licence:     <your licence>
 #-------------------------------------------------------------------------------
 
@@ -33,8 +33,11 @@ inPrecpNetCDF_File = None
 outWindNetCDF_File = None
 destNetCDF_FilePath = None
 inWindSpeed = None
+outRootGrp = None
+inRootGrp = None
 
-# settings for runnning this code locally. To run this code on remote app server comment out the following 6 lines
+# settings for runnning this code locally. To run this code on remote app server comment out the following 7 lines
+# To run locally, uncomment the following 7 lines
 ##argumentList = []
 ##argumentList.append('') #this argument is reserved for the name of this script file
 ##argumentList.append(r'E:\CIWaterData\Temp\precp_daily_multiple_data.nc')
@@ -62,20 +65,20 @@ inWindSpeed = int(sys.argv[4])
 
 try:
 
-    #check if the input netcdf file exists
+    # check if the input netcdf file exists
     if(os.path.isfile(inPrecpNetCDF_File) == False):
-        raise Exception("Input netcdf file " + inPrecpNetCDF_File +  " was not found.")
+        raise Exception("Input netcdf file ({0}) was not found.".format(inPrecpNetCDF_File))
         exit()
 
-    #check if the output netcdf file directoryt exists
+    # check if the output netcdf file directoryt exists
     filePath = os.path.dirname(outWindNetCDF_File)
     if(os.path.isdir(filePath) == False):
-        raise Exception("Netcdf output directory " + filePath +  " was not found.")
+        raise Exception("Netcdf output directory ({0}) was not found.".format(filePath))
         exit()
 
-    #check if the output netcdf file destination directoryt exists
+    # check if the output netcdf file destination directoryt exists
     if(os.path.isdir(destNetCDF_FilePath) == False):
-        raise Exception("Netcdf output destination directory " + destNetCDF_FilePath +  " was not found.")
+        raise Exception("Netcdf output destination directory ({0}) was not found.".format(destNetCDF_FilePath))
         exit()
 
      # validate input wind speed value
@@ -85,11 +88,11 @@ try:
         raise Exception(errMsg)
         exit()
 
-    #open the netCDF file in readonly mode based on which we will be creating a new netcdf file
-    inRootGrp = Dataset(inPrecpNetCDF_File, 'r', format='NETCDF4')
+    # open the netCDF file in readonly mode based on which we will be creating a new netcdf file
+    inRootGrp = Dataset(inPrecpNetCDF_File, 'r', format='NETCDF3_CLASSIC')
 
-    #open a new blank netcdf file to which we will be writting data
-    outRootGrp = Dataset(outWindNetCDF_File, 'w', format='NETCDF4')
+    # open a new blank netcdf file to which we will be writting data
+    outRootGrp = Dataset(outWindNetCDF_File, 'w', format='NETCDF3_CLASSIC')
 
     # DEBUG: print global attributes of the original file:
 ##    for gAttribute in inRootGrp.ncattrs():
@@ -105,11 +108,6 @@ try:
     outRootGrp.spatial_reference = 'NAD83_UTM_Zone_12N'
     outRootGrp.datum = 'D_North_America_1983'
 
-    #  DEBUG: print global attributes of the new file:
-##    for gAttribute in outRootGrp.ncattrs():
-##        print 'Global attribute name:', gAttribute, '=', getattr(outRootGrp,gAttribute)
-
-
     # get dimension values from the original netcdf file
     inputTimeVar = inRootGrp.variables['time']
     inputXvar = inRootGrp.variables['x']
@@ -121,24 +119,9 @@ try:
     print(inputYvar.shape[0])
     print(inputPrecVar.shape)
 
-    #DEBUG:
-##    print(inputXvar[:])
-
-##    for vAttribute in inputPrecVar.ncattrs():
-##        print 'Prec attribute', vAttribute, '=', getattr(inputPrecVar, vAttribute)
-##
-##    for vAttribute in inputTimeVar.ncattrs():
-##        print 'time attribute', vAttribute, '=', getattr(inputTimeVar, vAttribute)
-##
-##    for vAttribute in inputXvar.ncattrs():
-##        print 'x attribute', vAttribute, '=', getattr(inputXvar, vAttribute)
-##
-##    for vAttribute in inputYvar.ncattrs():
-##        print 'y attribute', vAttribute, '=', getattr(inputYvar, vAttribute)
-
     # Create 3 dimensions for the 3 variables: time, x and y based on the dimension of the
     # corresponding variables from the precp netcdf file
-    #dataPointsPerDayNeeded = 24/inTimeStep
+
     outTimeDimensionSize = inputTimeVar.shape[0]
     outXvarDimensionSize = inputXvar.shape[0]
     outYvarDimensionSize = inputYvar.shape[0]
@@ -152,20 +135,12 @@ try:
 ##        print dimName, len(dimObj)
 
 
-    # create a Prec variable of data type f4 that has data in all three dimensions
+    # create a Prec variable of data type f4 (32-bit floating point data type) that has data in all three dimensions
     vWind= outRootGrp.createVariable('V', 'f4',('time', 'y', 'x'))
     # create a variable for each dimension to hold data for that specific dimension
     vTime = outRootGrp.createVariable('time', 'f8', ('time'))   #f8 is 64-bit floating point
     vX = outRootGrp.createVariable('x', 'f4', ('x'))            #f4 is 32-bit floating point
     vY = outRootGrp.createVariable('y', 'f4', ('y'))
-
-    print(vWind.shape)
-    print(inputPrecVar.shape)
-
-    #DEBUG:
-##    for varKVP in outRootGrp.variables.iteritems():
-##        print varKVP[0]
-
 
     # add attributes to time variable
     vTime.units = 'hours since 0001-01-01 00:00:00.0'
@@ -193,20 +168,11 @@ try:
     # assign data to output x variable same as the input x variable
     vX[:] = inputXvar[:]
 
-    # DEBUG:
-##    print(vX[:])
-
     # assign data to output y variable same as the input y variable
     vY[:] = inputYvar[:]
 
-    # DEBUG:
-##    print(vY[:])
-
     # assign data to output time variable same as the input time variable
     vTime[:] = inputTimeVar[:]
-
-    # DEBUG:
-##    print(vTime[:])
 
     # get the dimension of the prec varaiable array shape
     times, cols, rows = inputPrecVar.shape
@@ -215,14 +181,12 @@ try:
     # in order to avoid memory error. Assigning data to the full wind varaible array in one
     # step causes memory error
     for time_step in range(0, times):
-##        cols = 50   #TODO comment this line to use the actual number of columns from the prec netcdf file
-##        rows = 50   #TODO comment this line to use the actual number of rows from the prec netcdf file
         shape = (1, cols, rows)
         vWind[time_step: time_step +1, 0:cols, 0:rows] = numpy.ones(shape, dtype=numpy.float32) * inWindSpeed
 
     print(vWind.shape)
 
-    #close the netcdf files
+    # close the netcdf files
     outRootGrp.close()
     inRootGrp.close()
 
@@ -231,6 +195,7 @@ try:
     destNetCDFFile = os.path.join(destNetCDF_FilePath, outNetCDF_FileName)
     if(os.path.isfile(destNetCDFFile) == True):
         os.unlink(destNetCDFFile)
+
     # move the generated netcdf file to the destination folder
     shutil.move(outWindNetCDF_File, destNetCDF_FilePath)
 

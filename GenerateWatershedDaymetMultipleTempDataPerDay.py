@@ -1,11 +1,12 @@
 #-------------------------------------------------------------------------------
-# Name:         GenerateWatershedDaymetMultipleTempDataPerDay.py
-# Purpose:      Generates multiple air temp data points per day from a single data point per day
-#
-# Author:      Pabitra
+# Name:     GenerateWatershedDaymetMultipleTempDataPerDay.py
+# Author:   Pabitra Dash (pabitra.dash@usu.edu)
+# Purpose:
+#   Generates multiple air temp data points per day and writes to a netcdf file using a single data point per day
+#   from an input netcdf file
 #
 # Created:     25/02/2013
-# Copyright:   (c) Pabitra 2013
+# Copyright:   (c) 2013
 # Licence:     <your licence>
 #-------------------------------------------------------------------------------
 from netCDF4 import Dataset
@@ -44,7 +45,8 @@ inRootGrpTmin = None
 inRootGrpTmax = None
 outRootGrp = None
 
-# settings for runnning this code locally. To run this code on remote app server comment out the following 8 lines
+# settings for runnning this code locally. To run this code on remote app server comment out the following 11 lines
+# To run locally, uncomment the following 11 lines
 ##argumentList = []
 ##argumentList.append('') #this argument is reserved for the name of this script file
 ##argumentList.append(r'E:\CIWaterData\DaymetTimeSeriesData\Logan\tempdatasets\OutNetCDF')
@@ -102,32 +104,27 @@ def getTminFactor(hour, interval):
 try:
     # check the netcdf temporary output directory exists
     if(os.path.isdir(outNetCDFFilePath) == False):
-        raise Exception("Netcdf output directory " + outNetCDFFilePath +  " was not found.")
+        raise Exception("Netcdf output directory ({0}) was not found.".format(outNetCDFFilePath))
         exit()
 
     # check the netcdf final output directory exists
     if(os.path.isdir(destNetCDF_FilePath) == False):
-        raise Exception("Netcdf final output directory " + destNetCDF_FilePath +  " was not found.")
+        raise Exception("Netcdf final output directory ({0}) was not found.".format(destNetCDF_FilePath))
         exit()
 
     # check the netcdf input directory exists
     if(os.path.isdir(sourceTaNetCDFilePath) == False):
-        raise Exception("Netcdf input directory " + sourceTaNetCDFilePath +  " was not found.")
+        raise Exception("Netcdf input directory ({0}) was not found.".format(sourceTaNetCDFilePath))
         exit()
-
-    # check that the netcdf input file directory and the output directory are not the same directory
-##    if(sourceTaNetCDFilePath == outNetCDFFilePath):
-##        raise Exception("Netcdf input directory and output directory found to be the same directory.")
-##        exit()
 
     inTminNetCDF_File = os.path.join(sourceTaNetCDFilePath, inTminNetCDF_FileName)
     if(os.path.isfile(inTminNetCDF_File) == False):
-        raise Exception("Input netcdf file " + inTminNetCDF_File +  " was not found.")
+        raise Exception("Input netcdf file ({0}) was not found.".format(inTminNetCDF_File))
         exit()
 
     inTmaxNetCDF_File = os.path.join(sourceTaNetCDFilePath, inTmaxNetCDF_FileName)
     if(os.path.isfile(inTmaxNetCDF_File) == False):
-        raise Exception("Input netcdf file " + inTmaxNetCDF_File +  " was not found.")
+        raise Exception("Input netcdf file ({0}) was not found.".format(inTmaxNetCDF_File))
         exit()
 
     if(inTimeStep != 1 and inTimeStep != 2 and inTimeStep != 3 and inTimeStep != 4 and inTimeStep != 6):
@@ -136,22 +133,20 @@ try:
         raise Exception(errMsg)
         exit()
 
-    #open the netCDF file that has minimum daily temp data. Open in readonly mode based on which we will be creating a new netcdf file
-    inRootGrpTmin = Dataset(inTminNetCDF_File, 'r', format='NETCDF4')
+    # open the netCDF file that has minimum daily temp data. Open in readonly mode based on which we will be creating a new netcdf file
+    inRootGrpTmin = Dataset(inTminNetCDF_File, 'r', format='NETCDF3_CLASSIC')
 
-    #open the netCDF file that has maximum daily temp data. Open in readonly mode based on which we will be creating a new netcdf file
-    inRootGrpTmax = Dataset(inTmaxNetCDF_File, 'r', format='NETCDF4')
+    # open the netCDF file that has maximum daily temp data. Open in readonly mode based on which we will be creating a new netcdf file
+    inRootGrpTmax = Dataset(inTmaxNetCDF_File, 'r', format='NETCDF3_CLASSIC')
 
     inputTminVar = inRootGrpTmin.variables['tmin']
     inputTmaxVar = inRootGrpTmax.variables['tmax']
     inputXminVar = inRootGrpTmin.variables['x']
     inputYminVar = inRootGrpTmin.variables['y']
 
-    #open a new blank netcdf file to which we will be writting data
-
+    # open a new blank netcdf file to which we will be writting data
     outNetCDF_File = os.path.join(outNetCDFFilePath, outNetCDF_FileName)
-    outRootGrp = Dataset(outNetCDF_File, 'w', format='NETCDF4')
-
+    outRootGrp = Dataset(outNetCDF_File, 'w', format='NETCDF3_CLASSIC')
 
     # add global file level attributes to the new netcdf file
     outRootGrp.start_year = inRootGrpTmin.start_year
@@ -178,7 +173,7 @@ try:
 ##    for dimName, dimObj in outRootGrp.dimensions.iteritems():
 ##        print dimName, len(dimObj)
 
-    # create a Temp variable of data type f4 that has data in all three dimensions
+    # create a Temp variable of data type f4 (32-bit floating point data type) that has data in all three dimensions
     vTemp= outRootGrp.createVariable(outDataVariableName, 'f4',('time', 'y', 'x'), least_significant_digit=3)
     # create a variable for each dimension to hold data for that specific dimension
     vTime = outRootGrp.createVariable('time', 'f8', ('time'))   #f8 is 64-bit floating point
@@ -213,8 +208,6 @@ try:
 
     # assign data to x variable
     vX[:] = inputXminVar[:]
-
-##    print(vX[:])
 
     # assign data to y variable
     vY[:] = inputYminVar[:]

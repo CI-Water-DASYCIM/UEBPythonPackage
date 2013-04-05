@@ -1,14 +1,16 @@
 #-------------------------------------------------------------------------------
-# Name:        CalculateWatershedLatLonValues.py
-# Purpose:     To calculate lat/lon values for the watershed domain. For smaller
-#              watershed only the lat/lon value for the domain midpoint will be
-#              alculated and written to a text file. For larger watershed, lat/lon
-#              values for each of the grid cell will be calculated and then be written to
-#              seprarately two different NetCDF files (one for lat values and the other for
-#              lon values. the genrated files will be saved in the same floder where
-#               watershed dem file exists
+# Name:     CalculateWatershedLatLonValues.py
+# Author:   Pabitra Dash (pabitra.dash@usu.edu)
+
+# Purpose:
+#   To calculate lat/lon values for the watershed domain. For smaller
+#   watershed only the lat/lon value for the domain midpoint will be
+#   alculated and written to a text file. For larger watershed, lat/lon
+#   values for each of the grid cell will be calculated and then be written to
+#   seprarately two different NetCDF files (one for lat values and the other for
+#   lon values. the genrated files will be saved in the same floder where
+#   watershed dem file exists
 #
-# Author:      Pabitra
 #
 # Created:     17/01/2013
 # Copyright:   (c) Pabitra 2013
@@ -19,7 +21,7 @@
 def main():
     pass
 
-# this says run  all code at indent level 0 when this script file is ran as standalone script
+# this says run  all code at indent level 0 when this script file is ran as a standalone script
 # meaning not imported in another script
 if __name__ == '__main__':
     main()
@@ -45,6 +47,7 @@ netCDFLatFile = None
 netCDFLonFile = None
 
 # settings for runnning this code locally. To run this code on remote app server comment out the following 6 lines
+# To run locally, uncomment the following 6 lines
 ##argumentList = []
 ##argumentList.append('') #this argument is reserved for the name of this script file
 ##argumentList.append(r'E:\CIWaterData\Temp\ws_dem.tif')
@@ -86,7 +89,7 @@ if(os.path.isfile(wsDEMFile) == True):
     netCDFLonFile = os.path.join(filePath, netCDFLonFileName)
 else:
     print('Exception')
-    raise Exception("Specified watershed DEM file was not found:" + wsDEMFile)
+    raise Exception("Specified watershed DEM file ({0}) was not found.:".format(wsDEMFile))
     exit()
 
 #Get properties of the input raster
@@ -124,7 +127,6 @@ try:
         textFileWriter = None
         try:
             textFileWriter = open(outputFilePath, "w")
-##            textFileWriter.write("Lon: %s\n"%rasCenterY)
             textFileWriter.write(str(rasCenterY))
         finally:
             textFileWriter.close()
@@ -188,10 +190,10 @@ try:
         latRaster = arcpy.NumPyArrayToRaster(inRasterCoordX, lower_left_corner= point, x_cell_size=rasMeanCellWidth, y_cell_size=rasMeanCellHeight)
         latRaster.save(latRasterFile)
 
-        #define coordinate system for the latRasterFile same as the watershed DEM file
+        # define coordinate system for the latRasterFile same as the watershed DEM file
         arcpy.DefineProjection_management(latRasterFile, outCS)
 
-        # Write the lat raster file to nedCDF file
+        # write the lat raster file to nedCDF file
         variable = "latitude"
         units = "degree"
         XDimension = "x"
@@ -212,10 +214,10 @@ try:
         lonRaster = arcpy.NumPyArrayToRaster(inRasterCoordY, lower_left_corner= point, x_cell_size=rasMeanCellWidth, y_cell_size=rasMeanCellHeight)
         lonRaster.save(lonRasterFile)
 
-        #define coordinate system for the LonRasterFile same as the watershed DEM file
+        # define coordinate system for the LonRasterFile same as the watershed DEM file
         arcpy.DefineProjection_management(lonRasterFile, outCS)
 
-        # Write the lon raster file to nedCDF file
+        # write the lon raster file to nedCDF file
         variable = "longitude"
         units = "degree"
         XDimension = "x"

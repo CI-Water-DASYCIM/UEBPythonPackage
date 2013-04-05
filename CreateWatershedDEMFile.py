@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 # ---------------------------------------------------------------------------
-# CreateWatershedDEMFile.py
+# Name:     CreateWatershedDEMFile.py
+# Author:   Pabitra Dash (pabitra.dash@usu.edu)
 # Created on: 2013-01-10 10:23:37.00000
 #
-# Description:Creates a DEM file for the given whatershed shape file based on
-# on an original DEM file that covers at least the target watershed
+# Description:
+#   Creates a DEM file for the given whatershed shape file based on
+#   on an original DEM file that covers at least the target watershed
 # ---------------------------------------------------------------------------
 
 # this says all code at indent level 0 is part of the main() function
@@ -34,7 +36,8 @@ ClippedWSDEMFileName = None
 ResampledWSDEMFileName = "ws_resample_dem.tif" # temporary file
 BufferedWSFile = None
 
-# settings for runnning this code locally. To run this code on remote app server comment out the following 5 lines
+# settings for runnning this code locally. To run this code on remote app server comment out the following 6 lines
+# To run locally, uncomment the following 6 lines
 ##argumentList = []
 ##argumentList.append('') #this argument is reserved for the name of this script file
 ##argumentList.append(r'E:\CIWaterData\DEM\gsl100.tif')
@@ -63,7 +66,7 @@ if(len(sys.argv) > 4):
 # check if provided DEM file exists
 if(os.path.isfile(OriginalDEMCoveringWSFile) == False):
     print('Exception')
-    raise Exception("Specified original watershed shape file was not found:" + OriginalDEMCoveringWSFile)
+    raise Exception("Specified original watershed shape file ({0}) was not found.".format(OriginalDEMCoveringWSFile))
     exit()
 
 ExtractedWSDEMFile = None

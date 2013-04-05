@@ -2,18 +2,20 @@
 # ---------------------------------------------------------------------------
 # CalculateWatershedDayemtTempGDAL.py
 # Created on: 2013-01-28 14:54:03.00000
+# Author: Pabitra Dash (pabitra.dash@usu.edu)
 #
-# Description: Generates a netcdf rh (vapor pressure) data file for the
-# domain watershed from a number of
-# netcdf data files obtanied from Daymet website
+# Description:
+#   Generates a netcdf rh (vapor pressure) data file for the
+#   domain watershed from a number of
+#   netcdf data files obtanied from Daymet website
 
 # Assumptions:
-# There will be one or more input daymet netcdf files
-# Each of these data files will have 365 time bands
+#   There will be one or more input daymet netcdf files
+#   Each of these data files will have 365 time bands
 
 # Dependencies:
-# netCDF4 python library
-# GDAL python library
+#   netCDF4 python library
+#   GDAL python library
 # ---------------------------------------------------------------------------
 
 # this says all code at indent level 0 is part of the main() function
@@ -47,6 +49,7 @@ outRasterFilePath = None
 clippedWSDEMFile = None
 inTaDataFileNames = None
 
+# TODO: read these 2 magic strings for dir path from a config file
 localPyScriptsPath = r'E:\SoftwareProjects\CIWaterPythonScripts'
 remotePyScriptsPath = r'C:\CIWaterPythonScripts'
 if(os.path.isdir(remotePyScriptsPath) == True):
@@ -59,7 +62,8 @@ else:
 
 import DaymetNumberOfDaysToProcess
 
-# settings for runnning this code locally. To run this code on remote app server comment out the following 8 lines
+# settings for runnning this code locally. To run this code on remote app server comment out the following 10 lines
+# To run locally, uncomment the following 10 lines
 ##argumentList = []
 ##argumentList.append('') #this argument is reserved for the name of this script file
 ##argumentList.append(r'E:\CIWaterData\DaymetTimeSeriesData\Logan\tempdatasets')
@@ -73,7 +77,7 @@ import DaymetNumberOfDaysToProcess
 
 
 # the first argument sys.argv[0] is the name of this script file
-# excluding the name of the script file we need 7 more argument, so total of 8
+# excluding the name of the script file we need 7 more arguments, so total of 8
 if (len(sys.argv) < 8):
     print('Invalid arguments:')
     print('1st argument: Source Daymet files directory path')
@@ -110,7 +114,6 @@ inMemoryRasterLayersArray = []
 
 def deleteAllFilesFromDirectory(directoryPath):
     os.chdir(directoryPath)
-    #fileToMatch = '*' + dataSetVariableName + '.*'
     rasterFiles = glob.glob('*.*')
     for filename in rasterFiles:
         if(os.path.isfile(filename) == True): # this check is needed for parallel execution for processing tmin and tmax
@@ -121,7 +124,7 @@ def deleteAllFilesFromDirectory(directoryPath):
                     pass
 
 def getInputDataFileStartYear(inputNetCDF_File):
-    rootGrp = Dataset(inputNetCDF_File, 'r', format='NETCDF4')
+    rootGrp = Dataset(inputNetCDF_File, 'r', format='NETCDF3_CLASSIC')
     dataYear = None
     for gAttribute in rootGrp.ncattrs():
         if(gAttribute == 'start_year'):
@@ -170,7 +173,7 @@ def convertRasterToNetCDF(inputRasterFile, outNetCDFFile, dataSetVariableName):
 
 def setNetCDFDDataUnits(netCDF_File, dataSetVariableName , units):
     #open the file with read/write mode (r+)
-    rootGrp = Dataset(netCDF_File, 'r+', format='NETCDF4')
+    rootGrp = Dataset(netCDF_File, 'r+', format='NETCDF3_CLASSIC')
 
     #get the temperature variable
     taVariable = rootGrp.variables[dataSetVariableName]
@@ -183,7 +186,7 @@ def setNetCDFDDataUnits(netCDF_File, dataSetVariableName , units):
 
 def setNetCDFDataYearAttribute(netCDF_File, dataYear):
     #open the file with read/write mode (r+)
-    rootGrp = Dataset(netCDF_File, 'r+', format='NETCDF4')
+    rootGrp = Dataset(netCDF_File, 'r+', format='NETCDF3_CLASSIC')
 
     rootGrp.start_year = dataYear
 
@@ -192,7 +195,7 @@ def setNetCDFDataYearAttribute(netCDF_File, dataYear):
 
 def setNetCDFDataVariableNameAttribute(netCDF_File, variableName):
     #open the file with read/write mode (r+)
-    rootGrp = Dataset(netCDF_File, 'r+', format='NETCDF4')
+    rootGrp = Dataset(netCDF_File, 'r+', format='NETCDF3_CLASSIC')
 
     rootGrp.data_variable_name = variableName
 
@@ -206,26 +209,26 @@ try:
     for netcdfFileName in TaNetCDFFilesArray:
         netcdfFile = os.path.join(sourceTaNetCDFilePath, netcdfFileName)
         if(os.path.isfile(netcdfFile) == False):
-            raise Exception("Input netcdf file " + netcdfFile +  " was not found.")
+            raise Exception("Input netcdf file ({0}) was not found.".format(netcdfFile))
             exit()
 
     if(os.path.isfile(clippedWSDEMFile) == False):
-        raise Exception("Input watershed DEM file " + clippedWSDEMFile +  " was not found.")
+        raise Exception("Input watershed DEM file ({0}) was not found.".format(clippedWSDEMFile))
         exit()
 
     # check the raster output directory exists
     if(os.path.isdir(outRasterFilePath) == False):
-        raise Exception("Raster output directory " + outRasterFilePath +  " was not found.")
+        raise Exception("Raster output directory ({0}) was not found.".format(outRasterFilePath))
         exit()
 
     # check the netcdf output directory exists
     if(os.path.isdir(outNetCDFFilePath) == False):
-        raise Exception("Netcdf output directory " + outNetCDFFilePath +  " was not found.")
+        raise Exception("Netcdf output directory ({0}) was not found.".format(outNetCDFFilePath))
         exit()
 
     # check the netcdf output directory exists
     if(os.path.isdir(sourceTaNetCDFilePath) == False):
-        raise Exception("Netcdf input directory " + sourceTaNetCDFilePath +  " was not found.")
+        raise Exception("Netcdf input directory ({0}) was not found.".format(sourceTaNetCDFilePath))
         exit()
 
     # check that the netcdf input file directory and the output directory are not the same directory
@@ -237,13 +240,11 @@ try:
     deleteAllFilesFromDirectory(outRasterFilePath)
 
     # delete any pre-existing output netcdf files
-##    deleteAllFilesFromDirectory(outNetCDFFilePath)
     outNetCDFFile = os.path.join(outNetCDFFilePath, outNetCDFFileName)
     if(os.path.isfile(outNetCDFFile) == True):
         os.unlink(outNetCDFFile)
 
-    # Find the data year from one of the input Daymet netcdf files
-    # Open the first netCDF file in the array
+    # find the data year from one of the input Daymet netcdf files
     inputNetCDFDataFile = os.path.join(sourceTaNetCDFilePath, TaNetCDFFilesArray[0] )
     dataYear = getInputDataFileStartYear(inputNetCDFDataFile)
 
@@ -272,7 +273,7 @@ try:
 
     # generate raster layer names and store in the above array
     # as well as create rsater layer from each of the input netcdf data files
-    dataVariableName = dataSetVariableName #'tmin'
+    dataVariableName = dataSetVariableName # e.g. 'tmin'
     dataXdimension = 'x'
     dataYdimension = 'y'
     dataBandDimension = ''
@@ -287,10 +288,10 @@ try:
         outRasterLayer = inMemoryRasterLayersArray[fileNo]
         arcpy.MakeNetCDFRasterLayer_md(inputNetcdfFile, dataVariableName, dataXdimension, dataYdimension, outRasterLayer, dataBandDimension, dataDimensionValues, dataValueSelectionMethod)
 
-    # Create the Geoprocessor object
+    # create the Geoprocessor object
     gp = arcgisscripting.create()
 
-    # Check out any necessary licenses
+    # check out any necessary licenses
     gp.CheckOutExtension("spatial")
 
     # snap raster is neeed for projection of the data raster file to the watershed projection
@@ -314,25 +315,23 @@ try:
     # select data for each time band from each of the in memory raster layers and then
     # mosiac the raster layer to save to disk for a given day
     daysInYear = DaymetNumberOfDaysToProcess.getNumberOfDays();
-##    daysInYear = 5 # TODO: For actual run set this to 365. It is now set for 5 days for demo purposes
+##  daysInYear = 5 # TODO: For actual run set this to 365. It is now set for 5 days for demo purposes
     for day in range(0, daysInYear):
         newDay = startDate + datetime.timedelta(days= day)
         outRasterFileName = dataSetVariableName + newDay.strftime(rasterFileNameDateFormat) + '.tif'
         outProjRasterFileName = 'wsProj' + dataSetVariableName + newDay.strftime(rasterFileNameDateFormat) + '.tif'
         outClippedRasterFileName = 'wsClipped' + dataSetVariableName + newDay.strftime(rasterFileNameDateFormat) + '.tif'
-##        outNetCDFFileName = dataSetVariableName + newDay.strftime(rasterFileNameDateFormat) + '.nc'
-##        outNetCDFFile = os.path.join(outNetCDFFilePath, outNetCDFFileName)
 
         valueSelect = ["time", newDay.strftime(timeValueFormat)]
         print('Day:' + str(day + 1))
         dimensionValues = [valueSelect]
 
-        # Execute SelectByDimension to select the current time band from the in memory raster layers
+        # execute SelectByDimension to select the current time band from the in memory raster layers
         for fileNo in range(0, len(inMemoryRasterLayersArray)):
             arcpy.SelectByDimension_md(inMemoryRasterLayersArray[fileNo], dimensionValues, valueSelectionMethod)
 
         # mosaic all the raster layers for the current time selection
-        #ref: http://webhelp.esri.com/arcgisdesktop/9.2/index.cfm?TopicName=mosaic_to_new_raster_(data_management)
+        # ref: http://webhelp.esri.com/arcgisdesktop/9.2/index.cfm?TopicName=mosaic_to_new_raster_(data_management)
         numberOfBands = '1'
         coordinate_system_for_the_output_raster = '' # this setting will use the cordinate system for the input rasters for the output raster
         pixel_type_of_output_raster = '32_BIT_FLOAT'
@@ -371,12 +370,7 @@ try:
     outMergedRasterFileName = 'merged' + dataSetVariableName + '.tif'
     outMergedRasterFile = os.path.join(outRasterFilePath, outMergedRasterFileName)
     inRasterFileNamePatternToMatch = 'wsClipped' + dataSetVariableName + str(dataYear) + '_??_??.tif'
-##    lockGP = threading.Lock()
-##    lockGP.acquire()
-
     mergeRasters(outRasterFilePath, outMergedRasterFile, inRasterFileNamePatternToMatch)
-
-##    lockGP.release()
 
     end_time = time.clock()
     elapsed_time = end_time - start_time
@@ -396,8 +390,7 @@ try:
 
     lockGP = threading.Lock()
     lockGP.acquire()
-##    outNetCDFFileName = dataSetVariableName + str(newDay.year) + '.nc'
-##    outNetCDFFile = os.path.join(outNetCDFFilePath, outNetCDFFileName)
+
     gp.RasterToNetCDF_md(outMergedRasterFile, outNetCDFFile, variable, units,
                             XDimension, YDimension, bandDimension)
 

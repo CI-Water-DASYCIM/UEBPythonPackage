@@ -1,11 +1,12 @@
 #-------------------------------------------------------------------------------
-# Name:         GenerateWatershedDaymetMultipleVpdDataPointsPerDay.py
-# Purpose:      Generates multiple vapor pressure data points per day from a single data point per day
-#
-# Author:      Pabitra
+# Name:     GenerateWatershedDaymetMultipleVpdDataPointsPerDay.py
+# Author:   Pabitra Dash (pabitra.dash@usu.edu)
+# Purpose:
+#   Generates multiple vapor pressure data points per day and writes data to a new netcdf file using
+#   a single data point per day from am input netcdf file
 #
 # Created:     21/02/2013
-# Copyright:   (c) Pabitra 2013
+# Copyright:   (c) 2013
 # Licence:     <your licence>
 #-------------------------------------------------------------------------------
 
@@ -36,7 +37,8 @@ inTimeStep = None
 outRootGrp = None
 inRootGrp = None
 
-# settings for runnning this code locally. To run this code on remote app server comment out the following 5 lines
+# settings for runnning this code locally. To run this code on remote app server comment out the following 6 lines
+# To run locally, uncomment the following 6 lines
 ##argumentList = []
 ##argumentList.append('') #this argument is reserved for the name of this script file
 ##argumentList.append(r'E:\CIWaterData\DaymetTimeSeriesData\Logan\vpdatasets\OutNetCDF\vp_daily_one_data.nc')
@@ -54,7 +56,6 @@ if (len(sys.argv) < 4):
     raise Exception("There has to be 3 arguments to calculate multiple vapor pressure data points per day.")
     exit()
 
-
 # retrieve passed arguments
 inNetCDF_File = sys.argv[1]
 outNetCDF_File = sys.argv[2]
@@ -62,21 +63,16 @@ inTimeStep = int(sys.argv[3])
 
 try:
 
-    #check if the input netcdf file exists
+    # check if the input netcdf file exists
     if(os.path.isfile(inNetCDF_File) == False):
-        raise Exception("Input netcdf file " + inNetCDF_File +  " was not found.")
+        raise Exception("Input netcdf file ({0}) was not found.".format(inNetCDF_File))
         exit()
 
     #check if the output netcdf file directoryt exists
     filePath = os.path.dirname(outNetCDF_File)
     if(os.path.isdir(filePath) == False):
-        raise Exception("Netcdf output directory " + filePath +  " was not found.")
+        raise Exception("Netcdf output directory ({0}) was not found.".format(filePath))
         exit()
-
-    # validate inTimeStep value
-##    if(inTimeStep.isdigit() == False):
-##        raise Exception("Provided time step ("  + inTimeStep +  ") is not a number.")
-##        exit()
 
     # validate input time step value
     if(inTimeStep != 1 and inTimeStep != 2 and inTimeStep != 3 and inTimeStep != 4 and inTimeStep != 6):
@@ -86,10 +82,10 @@ try:
         exit()
 
     #open the netCDF file in readonly mode based on which we will be creating a new netcdf file
-    inRootGrp = Dataset(inNetCDF_File, 'r', format='NETCDF4')
+    inRootGrp = Dataset(inNetCDF_File, 'r', format='NETCDF3_CLASSIC')
 
     #open a new blank netcdf file to which we will be writting data
-    outRootGrp = Dataset(outNetCDF_File, 'w', format='NETCDF4')
+    outRootGrp = Dataset(outNetCDF_File, 'w', format='NETCDF3_CLASSIC')
 
      # DEBUG: print global attributes of the original file:
 ##    for gAttribute in inRootGrp.ncattrs():
@@ -106,16 +102,6 @@ try:
     outRootGrp.spatial_reference = 'NAD83_UTM_Zone_12N'
     outRootGrp.datum = 'D_North_America_1983'
 
-
-    # DEBUG:print global attributes of the new file:
-##    for gAttribute in outRootGrp.ncattrs():
-##        print 'Global attribute name:', gAttribute, '=', getattr(outRootGrp,gAttribute)
-
-    # DEBUG:
-##    for varKVP in inRootGrp.variables.iteritems():
-##        print varKVP[0]
-##
-
     # get dimension values from the original netcdf file
     inputTimeVar = inRootGrp.variables['time']
     inputXvar = inRootGrp.variables['x']
@@ -127,20 +113,7 @@ try:
     print(inputYvar.shape[0])
     print(inputVpVar.shape)
 
-    # DEBUG:
-##    for vAttribute in inputVpVar.ncattrs():
-##        print 'Prec attribute', vAttribute, '=', getattr(inputVpVar, vAttribute)
-##
-##    for vAttribute in inputTimeVar.ncattrs():
-##        print 'time attribute', vAttribute, '=', getattr(inputTimeVar, vAttribute)
-##
-##    for vAttribute in inputXvar.ncattrs():
-##        print 'x attribute', vAttribute, '=', getattr(inputXvar, vAttribute)
-##
-##    for vAttribute in inputYvar.ncattrs():
-##        print 'y attribute', vAttribute, '=', getattr(inputYvar, vAttribute)
-
-    # Create 3 dimensions for three variables: time, x and y
+    # create 3 dimensions for three variables: time, x and y
     dataPointsPerDayNeeded = 24/inTimeStep
     outTimeDimensionSize = inputTimeVar.shape[0] * dataPointsPerDayNeeded
     outXvarDimensionSize = inputXvar.shape[0]
@@ -150,16 +123,16 @@ try:
     outRootGrp.createDimension('x', outXvarDimensionSize)
     outRootGrp.createDimension('y', outYvarDimensionSize)
 
-    #print each dimension name, dimension length
+    # print each dimension name, dimension length
     for dimName, dimObj in outRootGrp.dimensions.iteritems():
         print dimName, len(dimObj)
 
 
-    # create a Prec variable of data type f4 that has data in all three dimensions
+    # create a Prec variable of data type f4 (32-bit floating data type) that has data in all three dimensions
     vVp= outRootGrp.createVariable(outRootGrp.data_variable_name, 'f4',('time', 'y', 'x'))
     # create a variable for each dimension to hold data for that specific dimension
-    vTime = outRootGrp.createVariable('time', 'f8', ('time'))
-    vX = outRootGrp.createVariable('x', 'f4', ('x'))
+    vTime = outRootGrp.createVariable('time', 'f8', ('time'))   #f8: 64-bit floating point data type
+    vX = outRootGrp.createVariable('x', 'f4', ('x'))            #f4: 32-bit floating point data type
     vY = outRootGrp.createVariable('y', 'f4', ('y'))
 
     for varKVP in outRootGrp.variables.iteritems():
@@ -189,30 +162,11 @@ try:
     vY.standard_name = inputYvar.standard_name
     vY.units = inputYvar.units
 
-    # DEBUG:
-##    for vAttribute in vVp.ncattrs():
-##        print 'Prec attribute', vAttribute, '=', getattr(vVp, vAttribute)
-##
-##    for vAttribute in vTime.ncattrs():
-##        print 'time attribute', vAttribute, '=', getattr(vTime, vAttribute)
-##
-##    for vAttribute in vX.ncattrs():
-##        print 'x attribute', vAttribute, '=', getattr(vX, vAttribute)
-##
-##    for vAttribute in vY.ncattrs():
-##        print 'y attribute', vAttribute, '=', getattr(vY, vAttribute)
-
     # assign data to x variable
     vX[:] = inputXvar[:]
 
-    # DEBUG:
-##    print(vX[:])
-
     # assign data to y variable
     vY[:] = inputYvar[:]
-
-    # DEBUG:
-##    print(vY[:])
 
     # assign time data to time variable
     dataYear = outRootGrp.start_year
@@ -245,7 +199,7 @@ try:
     elapsed_time = end_time - start_time
     print('Time taken for the script to finish: ' + str(elapsed_time) + ' seconds')
 
-    #close netcdf files
+    # close netcdf files
     outRootGrp.close()
     inRootGrp.close()
     print('>>>done...')

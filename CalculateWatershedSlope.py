@@ -1,12 +1,12 @@
 #-------------------------------------------------------------------------------
-# Name:        CalculateWatershedSlope/py
-# Purpose:      Generates watershed slope netcdf file and saves to the same
-#               directory where the ws dem file exists
-#
-# Author:      Pabitra
+# Name:     CalculateWatershedSlope/py
+# Author:   Pabitra Dash (pabitra.dash@usu.edu)
+# Purpose:
+#   Generates watershed slope netcdf file and saves to the same
+#   directory where the ws dem file exists
 #
 # Created:     13/01/2013
-# Copyright:   (c) Pabitra 2013
+# Copyright:   (c) 2013
 # Licence:     <your licence>
 # Ref:http://webhelp.esri.com/arcgisdesktop/9.3/index.cfm?TopicName=Slope
 #-------------------------------------------------------------------------------
@@ -33,6 +33,7 @@ OutSlopeNetCDFFileName = None
 OutWSDEMSlopeFileName = "ws_slope.tif" # temporary file
 
 # settings for runnning this code locally. To run this code on remote app server comment out the following 5 lines
+# to run locally, uncomment the following 5 lines
 ##argumentList = []
 ##argumentList.append('') #this argument is reserved for the name of this script file
 ##argumentList.append(r'E:\CIWaterData\Temp\ws_dem.tif')
@@ -55,7 +56,7 @@ OutSlopeNetCDFFileName = sys.argv[2]
 # check if provided DEM file exists
 if(os.path.isfile(InWSDEMFile) == False):
     print('Exception')
-    raise Exception("Specified watershed DEM file was not found:" + InWSDEMFile)
+    raise Exception("Specified watershed DEM file ({0}) was not found.".format(InWSDEMFile))
     exit()
 
 filePath = os.path.dirname(InWSDEMFile)
@@ -69,21 +70,20 @@ slopeRasterFiles = glob.glob('ws_slope.*')
 for filename in slopeRasterFiles:
     os.unlink(filename)
 
-# Create the Geoprocessor object
+# create the Geoprocessor object
 gp = arcgisscripting.create()
 
 try:
-    # Set local variables
     InMeasurementType = "DEGREE"
     ZFactor = "1"
 
-    # Check out ArcGIS Spatial Analyst extension license
+    # check out ArcGIS Spatial Analyst extension license
     gp.CheckOutExtension("Spatial")
 
     # Process: Slope
     gp.Slope_sa(InWSDEMFile, OutWSDEMSlopeFile, InMeasurementType, ZFactor)
 
-    # Generate netcdf slope file
+    # generate netcdf slope file
     InWSDEMSlopeFile = OutWSDEMSlopeFile
     variable = "slope"
     units = "degree"

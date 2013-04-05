@@ -1,13 +1,15 @@
 # -*- coding: utf-8 -*-
 # ---------------------------------------------------------------------------
 # CalculateWatershedAtmosphericPressure.py
+# Author: Pabitra Dash (pabitra.dash@usu.edu)
 
-# Description:Calculates the atmospheric pressure for a watershed based on
-# provided watershed DEM file and writes a text file and saves it to the same directory
-# where the ws DEM file exists
+# Description:
+#   Calculates the atmospheric pressure for a watershed based on
+#   provided watershed DEM file and writes a text file and saves it to the same directory
+#   where the ws DEM file exists
 # ---------------------------------------------------------------------------
 
-#ref: http://webhelp.esri.com/arcgisdesktop/9.2/index.cfm?id=1663&pid=1644&topicname=Get%20Raster%20Properties%20(Data%20Management)&
+# ref: http://webhelp.esri.com/arcgisdesktop/9.2/index.cfm?id=1663&pid=1644&topicname=Get%20Raster%20Properties%20(Data%20Management)&
 
 import arcgisscripting
 import sys
@@ -16,9 +18,10 @@ import traceback
 
 # Local variables:
 WSDEMFile = None # this is the file generated after regriding the DEM file to match with buffered watershed
-OutputWsAtomPresTestFileName = None
+OutputWsAtomPresTextFileName = None
 
 # settings for runnning this code locally. To run this code on remote app server comment out the following 5 lines
+# To run loacally, uncommet the following 5 lines
 ##argumentList = []
 ##argumentList.append('') #this argument is reserved for the name of this script file
 ##argumentList.append(r'E:\CIWaterData\Temp\ws_dem.tif')
@@ -36,7 +39,7 @@ if (len(sys.argv) < 3):
 
 # retrieve the passed argument
 WSDEMFile = sys.argv[1]
-OutputWsAtomPresTestFileName = sys.argv[2]
+OutputWsAtomPresTextFileName = sys.argv[2]
 
 # check if provided DEM file exists
 if(os.path.isfile(WSDEMFile) == False):
@@ -45,7 +48,7 @@ if(os.path.isfile(WSDEMFile) == False):
 
 gp = arcgisscripting.create()
 
-# find average elevation of ws DEM
+# find average elevation of watershed DEM
 try:
     avgElevation = gp.GetRasterProperties (WSDEMFile, "MEAN")
     print(avgElevation)
@@ -56,11 +59,10 @@ try:
     watershedAtmoPressure = eval("Po * (1- 0.0065 * avgElevation / To) ** 5.257")
 
     filePath = os.path.dirname(WSDEMFile)
-    outputFilePath = os.path.join(filePath, OutputWsAtomPresTestFileName)
+    outputFilePath = os.path.join(filePath, OutputWsAtomPresTextFileName)
     textFileWriter = None
     try:
         textFileWriter = open(outputFilePath, "w")
-##        textFileWriter.write("Apr: %s"%watershedAtmoPressure)
         textFileWriter.write(str(watershedAtmoPressure))
     finally:
         textFileWriter.close()

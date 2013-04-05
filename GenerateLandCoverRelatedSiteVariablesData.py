@@ -1,14 +1,14 @@
 #-------------------------------------------------------------------------------
-# Name:         GenerateLandCoverRelatedSiteVariablesData.py
-# Purpose:      To generate netcdf file for each of the UEB land cover related
-#               site variables (cc, hcan, lay, ycage) for a given watershed DEM file. The
-#               generated netcdf files are stored in the same directory where the
-#               waterhsed NLCD dataset file exists
-#
-# Author:       Pabitra
+# Name:     GenerateLandCoverRelatedSiteVariablesData.py
+# Author:   Pabitra Dash (pabitra.dash@usu.edu)
+# Purpose:
+#   To generate netcdf file for each of the UEB land cover related
+#   site variables (cc, hcan, lay, ycage) for a given watershed DEM file. The
+#   generated netcdf files are stored in the same directory where the
+#   waterhsed NLCD dataset file exists
 #
 # Created:      22/01/2013
-# Copyright:    (c) Pabitra 2013
+# Copyright:    (c) 2013
 # Licence:      <your licence>
 #-------------------------------------------------------------------------------
 
@@ -41,6 +41,7 @@ netCDFLAIValueFileName = None
 netCDFYCAGEValueFileName = None
 
 # settings for runnning this code locally. To run this code on remote app server comment out the following 8 lines
+# To run locally uncomment the following 8 lines
 ##argumentList = []
 ##argumentList.append('') #this argument is reserved for the name of this script file
 ##argumentList.append(r'E:\CIWaterData\Temp\ws_nlcd.img')
@@ -181,6 +182,7 @@ landClassificationYCAGEValueLookup = {
         '90':   '2',
         '95':   '2'
     }
+
 def generateSiteVariableData(siteVariableDataArray, dataRasterFileToCreate, netCDFDataFileToCreate, variableName):
         # write cc values array to a raster file
         siteVariableDataRaster = arcpy.NumPyArrayToRaster(siteVariableDataArray, lower_left_corner= point, x_cell_size=rasMeanCellWidth, y_cell_size=rasMeanCellHeight)
@@ -189,11 +191,11 @@ def generateSiteVariableData(siteVariableDataArray, dataRasterFileToCreate, netC
         # define coordinate system for the ccValueRasterFile same as the watershed NLCD raster file
         arcpy.DefineProjection_management(dataRasterFileToCreate, outCS)
 
-        # Write the landocover cc site variable raster file to nedCDF file
+        # write the landocover cc site variable raster file to nedCDF file
         if(variableName == 'hcan'):
             units = "meter"
         else:
-            units = ""          #No units
+            units = ""  # no units
 
         variable = variableName
         XDimension = "x"
@@ -231,7 +233,7 @@ if(os.path.isfile(wsNLCDRasterFile) == True):
     netCDFYCAGEValueFile = os.path.join(filePath, netCDFYCAGEValueFileName)
 else:
     print('Exception')
-    raise Exception("Exception:Specified buffered watershed shape file was not found:" + wsNLCDRasterFile)
+    raise Exception("Exception:Specified buffered watershed shape file ({0}) was not found.".format(wsNLCDRasterFile))
     exit()
 
 try:
@@ -297,15 +299,14 @@ try:
             wsLAIValueArray[rowNum, colNum] = laiValue
             wsYCAGEValueArray[rowNum, colNum] = ycageValue
 
-
-    #Get properties of the input raster
+    # get properties of the input raster
     wsNLCDRasterDesc = arcpy.Describe(wsNLCDRasterFile)
 
     # coordinates of the lower left corner
     rasXmin = wsNLCDRasterDesc.Extent.XMin
     rasYmin = wsNLCDRasterDesc.Extent.YMin
 
-    # Cell size, raster size
+    # cell size, raster size
     rasMeanCellHeight = wsNLCDRasterDesc.MeanCellHeight
     rasMeanCellWidth = wsNLCDRasterDesc.MeanCellWidth
 

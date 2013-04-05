@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 # ---------------------------------------------------------------------------
-# CreateWatershedNLCDDataSet.py
+# Name: CreateWatershedNLCDDataSet.py
+# Author: Pabitra Dash (pabitra.dash@usu.edu)
 # Created on: 2013-01-10 10:23:37.00000
 #
-# Description:Creates a NLCD dataset file (.img) for the given whatershed shape file based on
-# on an original NLCD dataset file that covers at least the target watershed and saved in the same
-# floder as the ws shape file
+# Description:
+#   Creates a NLCD dataset file (.img) for the given whatershed shape file based on
+#   on an original NLCD dataset file that covers at least the target watershed and saved in the same
+#   folder as the ws shape file
 # ---------------------------------------------------------------------------
 
 
@@ -31,18 +33,13 @@ arcpy.CheckOutExtension("spatial")
 
 # Local variables:
 ProjectedNLCDDataSetFile = None
-##ExtractedNLCDFileName = "ExtractedWSNLCD.tif" #temporary file
 outWSNLCDFileName = None
-##ResampledNLCDFileName = "ResampledWSNLCD.img"
-##ElevationLayerNetCDF = None
 BufferedWSFile = None
 WSDEMFile = None
-##ExtractedNLCDFile = None
 outWSNLCDFile = None
-##ResampledNLCDFile = None
-##ClippedWSDEMFile = None
 
 # settings for runnning this code locally. To run this code on remote app server comment out the following 7 lines
+# To run locally, uncomment the following 7 lines
 ##argumentList = []
 ##argumentList.append('') #this argument is reserved for the name of this script file
 ##argumentList.append(r'E:\CIWaterData\NLCDDataSetUSA\ProjNLCD2006_LC_N36W096_v1.img')
@@ -59,7 +56,7 @@ if (len(sys.argv) < 5):
     print('2nd argument: Input buffered watershed shape file name with path.')
     print('3rd argument: Input watershed DEM file name with path.')
     print('4th argument: Output watershed NLCD data set file name.')
-    raise Exception("Exception: There has to be 4 arguments to generate land cover dataset for the watershed." + str(len(sys.argv)))
+    raise Exception("Exception: There has to be 4 arguments to generate land cover dataset for the watershed.")
     exit()
 
 # retrieve passed arguments
@@ -67,54 +64,35 @@ ProjectedNLCDDataSetFile = sys.argv[1]
 BufferedWSFile = sys.argv[2]
 WSDEMFile = sys.argv[3]
 outWSNLCDFileName = sys.argv[4]
-##CellSize = None
-##if(len(sys.argv) > 5):
-##    CellSize = sys.argv[5]
 
 # check if provided projected lncd dataset file exists
 if(os.path.isfile(ProjectedNLCDDataSetFile) == False):
-    print('Exception')
-    raise Exception("Exception: Specified projected NLCD dataset file was not found:" + ProjectedNLCDDataSetFile)
+    raise Exception("Exception: Specified projected NLCD dataset file ({0}) was not found.".format(ProjectedNLCDDataSetFile))
     exit()
 
 # check if provided ws DEM file exists
 if(os.path.isfile(WSDEMFile) == False):
-    print('Exception')
-    raise Exception("Exception: Specified watershed DEM file was not found:" + WSDEMFile)
+    raise Exception("Exception: Specified watershed DEM file ({0}) was not found.".format(WSDEMFile))
     exit()
 
 # check if provided buffered watershed file exists
 if(os.path.isfile(BufferedWSFile) == True):
     filePath = os.path.dirname(BufferedWSFile)
-    # set the path for the temporary extracted ws DEM file
-##    ExtractedNLCDFile = os.path.join(filePath, ExtractedNLCDFileName)
+
     # set the path for the output watershed nlcd dataset file
     outWSNLCDFile = os.path.join(filePath, outWSNLCDFileName)
-##    ResampledNLCDFile = os.path.join(filePath, ResampledNLCDFileName)
-##    WSDEMFile = os.path.join(filePath, WSDEMFileName)
 else:
     print('Exception')
-    raise Exception("Exception: Specified buffered watershed shape file was not found:" + BufferedWSFile)
+    raise Exception("Exception: Specified buffered watershed shape file ({0}) was not found.".format(BufferedWSFile))
     exit()
 
 try:
-    # if there exists a previously extracted DEM file delete it
-##    if(os.path.isfile(ExtractedNLCDFile) == True):
-##        os.unlink(ExtractedNLCDFile)
 
     # if there exists a previously created watershed sepecfic nlcd datatset delete it
     if(os.path.isfile(outWSNLCDFile) == True):
         os.unlink(outWSNLCDFile)
 
-    # if there exists a previously resampled DEM file delete it
-##    if(os.path.isfile(ResampledNLCDFile) == True):
-##        os.unlink(ResampledNLCDFile)
-
-    # if there exists a previously projected nlcd dataset file delete it
-##    if(os.path.isfile(ProjectedNLCDDataSetFile) == True):
-##        os.unlink(ProjectedNLCDDataSetFile)
-
-    #1. project the original shape file to the coordinate system of the DEM file
+    # project the original shape file to the coordinate system of the DEM file
     # get spatial reference (cooordinate system) from the DEM file
     # ref: http://help.arcgis.com/en/arcgisdesktop/10.0/help/index.html#//000v000000p6000000
     WSdesc = arcpy.Describe(BufferedWSFile)
@@ -127,10 +105,10 @@ try:
     else:
         outCS = arcpy.SpatialReference(wsCS)
 
-    # Create the Geoprocessor object
+    # create the Geoprocessor object
     gp = arcgisscripting.create()
 
-     # Check out any necessary licenses
+     # check out any necessary licenses
     gp.CheckOutExtension("spatial")
 
     gp.SnapRaster = WSDEMFile
@@ -145,13 +123,6 @@ try:
 
     # ref:http://webhelp.esri.com/arcgisdesktop/9.3/index.cfm?TopicName=Clip_(Data_Management)
     gp.clip_management(ProjectedNLCDDataSetFile, wsBoundingBox, outWSNLCDFile, clipping_geometry ="ClippingGeometry")
-
-    # Process: Resample
-    # Resampling is necessary if we give the option for the user to provide a different
-    # cell size than the cell size of the original dem file (OriginalDEMCoveringWSFile)
-    # Ref: http://webhelp.esri.com/arcgisdesktop/9.2/index.cfm?TopicName=resample_(data_management)
-##    if(CellSize != None):
-##        gp.Resample_management(outWSNLCDFile, ResampledNLCDFile, str(CellSize), "NEAREST")
 
     print('>>>done..')
 

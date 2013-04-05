@@ -2,18 +2,20 @@
 # ---------------------------------------------------------------------------
 # CalculateWatershedDayemtVPDGDAL.py
 # Created on: 2013-01-28 14:54:03.00000
+# Author: Pabitra Dash (pabitra.dash@usu.edu)
 #
-# Description: Generates a netcdf vapor pressure deficit (VPD)data file for the
-# domain watershed from a number of
-# netcdf data files obtanied from Daymet website
+# Description:
+#   Generates a netcdf vapor pressure deficit (VPD)data file for the
+#   domain watershed from a number of
+#   netcdf data files obtanied from Daymet website
 
 # Assumptions:
-# There will be one or more input daymet netcdf files
-# Each of these data files will have 365 time bands
+#   There will be one or more input daymet netcdf files
+#   Each of these data files will have 365 time bands
 
 # Dependencies:
-# netCDF4 python library
-# GDAL python library
+#   netCDF4 python library
+#   GDAL python library
 # ---------------------------------------------------------------------------
 
 # this says all code at indent level 0 is part of the main() function
@@ -47,6 +49,7 @@ outRasterFilePath = None
 clippedWSDEMFile = None
 inVpDataFileNames = None
 
+# TODO: read these 2 magic strings for dir path from a config file
 localPyScriptsPath = r'E:\SoftwareProjects\CIWaterPythonScripts'
 remotePyScriptsPath = r'C:\CIWaterPythonScripts'
 if(os.path.isdir(remotePyScriptsPath) == True):
@@ -59,7 +62,8 @@ else:
 
 import DaymetNumberOfDaysToProcess
 
-# settings for runnning this code locally. To run this code on remote app server comment out the following 8 lines
+# settings for runnning this code locally. To run this code on remote app server comment out the following 9 lines
+# To run locally, uncomment the following 9 lines
 ##argumentList = []
 ##argumentList.append('') #this argument is reserved for the name of this script file
 ##argumentList.append(r'E:\CIWaterData\DaymetTimeSeriesData\Logan\vpdatasets')
@@ -97,7 +101,7 @@ vpNetCDFFilesArray = []
 vpNetCDFFilesArray = inVpDataFileNames.split(';')
 
 if(len(vpNetCDFFilesArray) == 0):
-    raise Exception("Netcdf input Dayment data file names are missing.")
+    raise Exception("Netcdf input Daymet data file names are missing.")
     exit()
 
 # array to store raster layers created from each of the input netcdf prep data file
@@ -110,7 +114,7 @@ def deleteAllFilesFromDirectory(directoryPath):
         os.unlink(filename)
 
 def getInputDataFileStartYear(inputNetCDF_File):
-    rootGrp = Dataset(inputNetCDF_File, 'r', format='NETCDF4')
+    rootGrp = Dataset(inputNetCDF_File, 'r', format='NETCDF3_CLASSIC')
     dataYear = None
     for gAttribute in rootGrp.ncattrs():
         if(gAttribute == 'start_year'):
@@ -159,7 +163,7 @@ def convertRasterToNetCDF(inputRasterFile, outNetCDFFile):
 
 def setNetCDFDataUnits(vpNetCDF_File, dataSetVariableName, variableUnit):
     #open the file with read/write mode (r+)
-    rootGrp = Dataset(vpNetCDF_File, 'r+', format='NETCDF4')
+    rootGrp = Dataset(vpNetCDF_File, 'r+', format='NETCDF3_CLASSIC')
 
     #get the vp variable
     precpVariable = rootGrp.variables[dataSetVariableName]
@@ -172,7 +176,7 @@ def setNetCDFDataUnits(vpNetCDF_File, dataSetVariableName, variableUnit):
 
 def setNetCDFDataYearAttribute(netCDF_File, dataYear):
     #open the file with read/write mode (r+)
-    rootGrp = Dataset(netCDF_File, 'r+', format='NETCDF4')
+    rootGrp = Dataset(netCDF_File, 'r+', format='NETCDF3_CLASSIC')
 
     rootGrp.start_year = dataYear
 
@@ -181,7 +185,7 @@ def setNetCDFDataYearAttribute(netCDF_File, dataYear):
 
 def setNetCDFDataVariableNameAttribute(netCDF_File, variableName):
     #open the file with read/write mode (r+)
-    rootGrp = Dataset(netCDF_File, 'r+', format='NETCDF4')
+    rootGrp = Dataset(netCDF_File, 'r+', format='NETCDF3_CLASSIC')
 
     rootGrp.data_variable_name = variableName
 
@@ -195,26 +199,26 @@ try:
     for netcdfFileName in vpNetCDFFilesArray:
         netcdfFile = os.path.join(sourceVpNetCDFilePath, netcdfFileName)
         if(os.path.isfile(netcdfFile) == False):
-            raise Exception("Input netcdf file " + netcdfFile +  " was not found.")
+            raise Exception("Input netcdf file ({0}) was not found.".format(netcdfFile))
             exit()
 
     if(os.path.isfile(clippedWSDEMFile) == False):
-        raise Exception("Input watershed DEM file " + clippedWSDEMFile +  " was not found.")
+        raise Exception("Input watershed DEM file ({0}) was not found.".format(clippedWSDEMFile))
         exit()
 
     # check the raster output directory exists
     if(os.path.isdir(outRasterFilePath) == False):
-        raise Exception("Raster output directory " + outRasterFilePath +  " was not found.")
+        raise Exception("Raster output directory ({0}) was not found.".format(outRasterFilePath))
         exit()
 
     # check the netcdf output directory exists
     if(os.path.isdir(outNetCDFFilePath) == False):
-        raise Exception("Netcdf output directory " + outNetCDFFilePath +  " was not found.")
+        raise Exception("Netcdf output directory ({0}) outNetCDFFilePath was not found.".format(outNetCDFFilePath))
         exit()
 
     # check the netcdf output directory exists
     if(os.path.isdir(sourceVpNetCDFilePath) == False):
-        raise Exception("Netcdf input directory " + sourceVpNetCDFilePath +  " was not found.")
+        raise Exception("Netcdf input directory ({0}) was not found.".format(sourceVpNetCDFilePath))
         exit()
 
     # check that the netcdf input file directory and the output directory are not the same directory
@@ -271,7 +275,8 @@ try:
         # Process: Make NetCDF Raster Layer (in memory)
         inputNetcdfFile = os.path.join(sourceVpNetCDFilePath, vpNetCDFFilesArray[fileNo])
         outRasterLayer = inMemoryRasterLayersArray[fileNo]
-        arcpy.MakeNetCDFRasterLayer_md(inputNetcdfFile, dataVariableName, dataXdimension, dataYdimension, outRasterLayer, dataBandDimension, dataDimensionValues, dataValueSelectionMethod)
+        arcpy.MakeNetCDFRasterLayer_md(inputNetcdfFile, dataVariableName, dataXdimension, dataYdimension,
+                                        outRasterLayer, dataBandDimension, dataDimensionValues, dataValueSelectionMethod)
 
     # Create the Geoprocessor object
     gp = arcgisscripting.create()
@@ -282,7 +287,9 @@ try:
     # snap raster is neeed for projection of the data raster file to the watershed projection
     gp.SnapRaster = clippedWSDEMFile
 
-    startDate = datetime.date(dataYear, 1, 1)
+    startDay = 1
+    startMonth = 1
+    startDate = datetime.date(dataYear, startMonth, startDay)
     timeValueFormat = "%m/%d/%Y %H:%M:%S %p"
     rasterFileNameDateFormat = "%Y_%m_%d"
     valueSelectionMethod = "BY_VALUE"
@@ -311,7 +318,7 @@ try:
         print('Day:' + str(day + 1))
         dimensionValues = [valueSelect]
 
-        # Execute SelectByDimension to select the current time band from the in memory raster layers
+        # execute SelectByDimension to select the current time band from the in memory raster layers
         for fileNo in range(0, len(inMemoryRasterLayersArray)):
             arcpy.SelectByDimension_md(inMemoryRasterLayersArray[fileNo], dimensionValues, valueSelectionMethod)
 
@@ -323,7 +330,9 @@ try:
         cell_size_of_output_raster = '' # this setting will use the cell size of the input rasters for the ouput raster
         mosiac_method = 'MEAN' # the output cell value of the overlapping areas will be the mean of the overlapped cells
         mosaic_colormap_mode = 'FIRST' # this setting will use the colormap of the first input raster
-        arcpy.MosaicToNewRaster_management(inputRastersToMosaic, outRasterFilePath, outRasterFileName, coordinate_system_for_the_output_raster, pixel_type_of_output_raster, cell_size_of_output_raster, numberOfBands, mosiac_method, mosaic_colormap_mode)
+        arcpy.MosaicToNewRaster_management(inputRastersToMosaic, outRasterFilePath, outRasterFileName,
+                                            coordinate_system_for_the_output_raster, pixel_type_of_output_raster,
+                                            cell_size_of_output_raster, numberOfBands, mosiac_method, mosaic_colormap_mode)
 
         # project the saved raster to projection of the watershed  dem
         inRasterFile = os.path.join(outRasterFilePath, outRasterFileName)
@@ -358,12 +367,7 @@ try:
     outMergedRasterFile = os.path.join(outRasterFilePath, outMergedRasterFileName)
     inRasterFileNamePatternToMatch = 'wsClippedVp' + str(dataYear) + '_??_??.tif'
 
-##    lockGP = threading.Lock()
-##    lockGP.acquire()
-
     mergeRasters(outRasterFilePath, outMergedRasterFile, inRasterFileNamePatternToMatch)
-
-##    lockGP.release()
 
     end_time = time.clock()
     elapsed_time = end_time - start_time

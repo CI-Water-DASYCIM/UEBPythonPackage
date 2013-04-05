@@ -2,17 +2,19 @@
 # ---------------------------------------------------------------------------
 # CalculateWatershedDaymetPrecpGDAL.py
 # Created on: 2013-01-28 14:54:03.00000
+# Author: Pabitra Dash (pabitra.dash@usu.edu)
 #
-# Description: Generates a netcdf precipitation data file for the
-# domain watershed from a number of
-# netcdf data files obtanied from Daymet website
+# Description:
+#   Generates a netcdf precipitation data file for the
+#   domain watershed from a number of
+#   netcdf data files obtanied from Daymet website and stored locally
 
 # Assumptions:
-# There will be one or more input daymet netcdf files
-# Each of these data files will have 365 time bands
+#   There will be one or more input daymet netcdf files
+#   Each of these data files will have 365 time bands
 # Dependencies:
-# netCDF4 python library
-# GDAL python library
+#   netCDF4 python library
+#   GDAL python library
 # ---------------------------------------------------------------------------
 
 # this says all code at indent level 0 is part of the main() function
@@ -46,6 +48,7 @@ outRasterFilePath = None
 clippedWSDEMFile = None
 inPrecpDataFileNames = None
 
+# TODO: read these 2 magic strings for dir path from a config file
 localPyScriptsPath = r'E:\SoftwareProjects\CIWaterPythonScripts'
 remotePyScriptsPath = r'C:\CIWaterPythonScripts'
 if(os.path.isdir(remotePyScriptsPath) == True):
@@ -53,12 +56,13 @@ if(os.path.isdir(remotePyScriptsPath) == True):
 elif(os.path.isdir(localPyScriptsPath) == True):
     sys.path.append(localPyScriptsPath)
 else:
-     raise Exception("Script file (" + DaymetNumberOfDaysToProcess.py +  ") was not found.")
+     raise Exception("Script file (DaymetNumberOfDaysToProcess.py) was not found.")
      exit()
 
 import DaymetNumberOfDaysToProcess
 
-# settings for runnning this code locally. To run this code on remote app server comment out the following 8 lines
+# settings for runnning this code locally. To run this code on remote app server comment out the following 9 lines
+# To run this code locally uncomment the following 9 lines
 ##argumentList = []
 ##argumentList.append('') #this argument is reserved for the name of this script file
 ##argumentList.append(r'E:\CIWaterData\DaymetTimeSeriesData\Logan\precdatasets')
@@ -74,14 +78,13 @@ import DaymetNumberOfDaysToProcess
 if (len(sys.argv) < 7):
     print('Invalid arguments:')
     print('1st argument: Input precp netcdf file path')
-    print('2nd argument: Output netcdf file path')
+    print('2nd argument: Output netcdf file path (must be different from input netcdf file path)')
     print('3rd argument: Output netcdf file name')
     print('4th argument: Output raster file path')
     print('5th argument: Input watershed DEM file name with file path')
     print('6th argument: List of input precp netcdf file names')
     raise Exception("There has to be 6 arguments to calculate Dayment precpitation at each grid of the watershed.")
     exit()
-
 
 # retrieve passed arguments
 sourcePrecpNetCDFilePath = sys.argv[1]
@@ -103,14 +106,17 @@ if(len(precpNetCDFFilesArray) == 0):
 # array to store raster layers created from each of the input netcdf prep data file
 inMemoryRasterLayersArray = []
 
+# param: directoryPath dir path from which all files need to be deleted
 def deleteAllFilesFromDirectory(directoryPath):
     os.chdir(directoryPath)
     prcpRasterFiles = glob.glob('*.*')
     for filename in prcpRasterFiles:
         os.unlink(filename)
 
+# param: inputNetCDF_File netcdef file from which the value for the
+#        global attribute start_year need to be read
 def getInputDataFileStartYear(inputNetCDF_File):
-    rootGrp = Dataset(inputNetCDF_File, 'r', format='NETCDF4')
+    rootGrp = Dataset(inputNetCDF_File, 'r', format='NETCDF3_CLASSIC')
     dataYear = None
     for gAttribute in rootGrp.ncattrs():
         if(gAttribute == 'start_year'):
@@ -128,6 +134,10 @@ def deleteAllInMemoryRasterLayers():
         except:
             pass
 
+# param: inRasterFilePath the file path where the raster files need to be merged exist
+# param: outMergedRasterFile merged output file name and path
+# param: inRasterFileNamePatternToMatch file name matching pattern to be used for selecting a
+#        and merging raster files
 def mergeRasters(inRasterFilePath, outMergedRasterFile, inRasterFileNamePatternToMatch):
     argv = []
     argv.append('')
@@ -142,13 +152,16 @@ def mergeRasters(inRasterFilePath, outMergedRasterFile, inRasterFileNamePatternT
     argv.append(inRasterFile)
     gdal_merge.main(argv)
 
+# param: inputRasterFile raster file from which a netcdf file needs to be generated
+# param: outNetCDFFile name and file path for the output netcdf file
 def convertRasterToNetCDF(inputRasterFile, outNetCDFFile):
     variable = "Prec"
     units = "" #actual unit for precp data is 'mm/day' but this unit does not work with netcdf create function - correct unit is set after the file is created
     XDimension = "x"
     YDimension = "y"
     bandDimension = "time"
-    # Create the Geoprocessor object
+
+    # create the Geoprocessor object
     gp = arcgisscripting.create()
 
     # Check out any necessary licenses
@@ -157,31 +170,38 @@ def convertRasterToNetCDF(inputRasterFile, outNetCDFFile):
     gp.RasterToNetCDF_md(inputRasterFile, outNetCDFFile, variable, units,
                             XDimension, YDimension, bandDimension)
 
+# param: netCDF_File netcdf file for which data variable units to be set
+# param: dataSetVariableName name of the variable for which units to be set
+# param: units the units to be set for the data variable
 def setNetCDFDDataUnits(netCDF_File, dataSetVariableName, units):
-    #open the file with read/write mode (r+)
-    rootGrp = Dataset(netCDF_File, 'r+', format='NETCDF4')
+    # open the file with read/write mode (r+)
+    rootGrp = Dataset(netCDF_File, 'r+', format='NETCDF3_CLASSIC')
 
-    #get the data variable
+    # get the data variable
     taVariable = rootGrp.variables[dataSetVariableName]
 
-    #set the units of temperature variable to kelivin
+    # set the units of temperature variable to kelivin
     taVariable.units = units
 
-    #close the file
+    # close the file
     rootGrp.close()
 
+# param: netCDF_File the netcdf file for which the start_year global attribute to be set
+# param: dataYear the value for the global attribute start_year
 def setNetCDFDataYearAttribute(netCDF_File, dataYear):
-    #open the file with read/write mode (r+)
-    rootGrp = Dataset(netCDF_File, 'r+', format='NETCDF4')
+    # open the file with read/write mode (r+)
+    rootGrp = Dataset(netCDF_File, 'r+', format='NETCDF3_CLASSIC')
 
     rootGrp.start_year = dataYear
 
-    #close the file
+    # close the file
     rootGrp.close()
 
+# param: netCDF_File the netcdf file for which the global attribute data_varaible_name needs to be set
+# pram: variableName name of the variable to be assigned to the global attribute data_variable_name
 def setNetCDFDataVariableNameAttribute(netCDF_File, variableName):
-    #open the file with read/write mode (r+)
-    rootGrp = Dataset(netCDF_File, 'r+', format='NETCDF4')
+    # open the file with read/write mode (r+)
+    rootGrp = Dataset(netCDF_File, 'r+', format='NETCDF3_CLASSIC')
 
     rootGrp.data_variable_name = variableName
 
@@ -191,30 +211,30 @@ def setNetCDFDataVariableNameAttribute(netCDF_File, variableName):
 try:
     deleteAllInMemoryRasterLayers()
 
-    # check that each of the source netcdf data files exit
+    # check that each of the source daymet netcdf data files exit
     for netcdfFileName in precpNetCDFFilesArray:
         netcdfFile = os.path.join(sourcePrecpNetCDFilePath, netcdfFileName)
         if(os.path.isfile(netcdfFile) == False):
-            raise Exception("Input netcdf file " + netcdfFile +  " was not found.")
+            raise Exception("Input netcdf file ({0}) was not found.".format(netcdfFile))
             exit()
 
     if(os.path.isfile(clippedWSDEMFile) == False):
-        raise Exception("Input watershed DEM file " + clippedWSDEMFile +  " was not found.")
+        raise Exception("Input watershed DEM file ({0}) was not found.".format(clippedWSDEMFile))
         exit()
 
     # check the raster output directory exists
     if(os.path.isdir(outRasterFilePath) == False):
-        raise Exception("Raster output directory " + outRasterFilePath +  " was not found.")
+        raise Exception("Raster output directory ({0}) was not found.".format(outRasterFilePath))
         exit()
 
     # check the netcdf output directory exists
     if(os.path.isdir(outNetCDFFilePath) == False):
-        raise Exception("Netcdf output directory " + outNetCDFFilePath +  " was not found.")
+        raise Exception("Netcdf output directory ({0}) was not found.".format(outNetCDFFilePath))
         exit()
 
     # check the netcdf output directory exists
     if(os.path.isdir(sourcePrecpNetCDFilePath) == False):
-        raise Exception("Netcdf input directory " + sourcePrecpNetCDFilePath +  " was not found.")
+        raise Exception("Netcdf input directory ({0}) was not found.".format(sourcePrecpNetCDFilePath))
         exit()
 
     # check that the netcdf input file directory and the output directory are not the same directory
@@ -228,8 +248,8 @@ try:
     # delete any pre-existing output netcdf files
     deleteAllFilesFromDirectory(outNetCDFFilePath)
 
-    # Find the data year from one of the input Daymet netcdf files
-    # Open the first netCDF file in the array
+    # find the data year from one of the input Daymet netcdf files
+    # open the first netCDF file in the array
     inputNetCDFDataFile = os.path.join(sourcePrecpNetCDFilePath, precpNetCDFFilesArray[0] )
     dataYear = getInputDataFileStartYear(inputNetCDFDataFile)
 
@@ -268,18 +288,21 @@ try:
         # Process: Make NetCDF Raster Layer (in memory)
         inputNetcdfFile = os.path.join(sourcePrecpNetCDFilePath, precpNetCDFFilesArray[fileNo])
         outRasterLayer = inMemoryRasterLayersArray[fileNo]
-        arcpy.MakeNetCDFRasterLayer_md(inputNetcdfFile, dataVariableName, dataXdimension, dataYdimension, outRasterLayer, dataBandDimension, dataDimensionValues, dataValueSelectionMethod)
+        arcpy.MakeNetCDFRasterLayer_md(inputNetcdfFile, dataVariableName, dataXdimension,
+                                        dataYdimension, outRasterLayer, dataBandDimension, dataDimensionValues, dataValueSelectionMethod)
 
-    # Create the Geoprocessor object
+    # create the Geoprocessor object
     gp = arcgisscripting.create()
 
-    # Check out any necessary licenses
+    # check out any necessary licenses
     gp.CheckOutExtension("spatial")
 
     # snap raster is neeed for projection of the data raster file to the watershed projection
     gp.SnapRaster = clippedWSDEMFile
 
-    startDate = datetime.date(dataYear, 1, 1)
+    startDay = 1
+    startMonth = 1
+    startDate = datetime.date(dataYear, startMonth, startDay)
     timeValueFormat = "%m/%d/%Y %H:%M:%S %p"
     rasterFileNameDateFormat = "%Y_%m_%d"
     valueSelectionMethod = "BY_VALUE"
@@ -321,7 +344,9 @@ try:
         cell_size_of_output_raster = '' # this setting will use the cell size of the input rasters for the ouput raster
         mosiac_method = 'MEAN' # the output cell value of the overlapping areas will be the mean of the overlapped cells
         mosaic_colormap_mode = 'FIRST' # this setting will use the colormap of the first input raster
-        arcpy.MosaicToNewRaster_management(inputRastersToMosaic, outRasterFilePath, outRasterFileName, coordinate_system_for_the_output_raster, pixel_type_of_output_raster, cell_size_of_output_raster, numberOfBands, mosiac_method, mosaic_colormap_mode)
+        arcpy.MosaicToNewRaster_management(inputRastersToMosaic, outRasterFilePath, outRasterFileName,
+                                            coordinate_system_for_the_output_raster, pixel_type_of_output_raster,
+                                            cell_size_of_output_raster, numberOfBands, mosiac_method, mosaic_colormap_mode)
 
         # project the saved raster to projection of the watershed  dem
         inRasterFile = os.path.join(outRasterFilePath, outRasterFileName)
@@ -353,12 +378,7 @@ try:
     outMergedRasterFile = os.path.join(outRasterFilePath, outMergedRasterFileName)
     inRasterFileNamePatternToMatch = 'wsClippedprcp' + str(dataYear) + '_??_??.tif'
 
-##    lockGP = threading.Lock()
-##    lockGP.acquire()
-
     mergeRasters(outRasterFilePath, outMergedRasterFile, inRasterFileNamePatternToMatch)
-
-##    lockGP.release()
 
     print('>>>>Elapsed time in creating raster files:' + str(raster_elapsed_time))
 
@@ -392,10 +412,10 @@ try:
     # set the units of the Precp variable in the output netcdf file
     setNetCDFDDataUnits(outNetCDFFile, variable, 'mm/day')
 
-    #set the start_year global attribute to dataYear
+    # set the start_year global attribute to dataYear
     setNetCDFDataYearAttribute(outNetCDFFile, dataYear)
 
-    #set the data_varaible_name global attribute to as set in variable
+    # set the data_varaible_name global attribute to as set in variable
     setNetCDFDataVariableNameAttribute(outNetCDFFile, variable)
 
     # delete all files from the outRasterFilePath folder

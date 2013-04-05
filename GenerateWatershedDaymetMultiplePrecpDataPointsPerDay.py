@@ -1,11 +1,12 @@
 #-------------------------------------------------------------------------------
-# Name:         GenerateMultiplePrecpDataPointsPerDay.py
-# Purpose:      Generates multiple prcp data points per day from a single data point per day
-#
-# Author:      Pabitra
+# Name:     GenerateMultiplePrecpDataPointsPerDay.py
+# Author:   Pabitra Dash (pabitra.dash@usu.edu)
+# Purpose:
+#   Generates multiple prcp data points per day and writes to a netcdf file
+#   from a single data point per day nectcdf file
 #
 # Created:     21/02/2013
-# Copyright:   (c) Pabitra 2013
+# Copyright:   (c) 2013
 # Licence:     <your licence>
 #-------------------------------------------------------------------------------
 
@@ -28,7 +29,7 @@ import sys
 import traceback
 from netCDF4 import num2date, date2num
 
-#local variables
+# local variables
 inNetCDF_File = None
 outNetCDF_File = None
 inTimeStep = None
@@ -36,7 +37,8 @@ destNetCDF_FilePath = None
 outRootGrp = None
 inRootGrp = None
 
-# settings for runnning this code locally. To run this code on remote app server comment out the following 5 lines
+# settings for runnning this code locally. To run this code on remote app server comment out the following 7 lines
+# To run locally, uncmment the following 7 lines
 ##argumentList = []
 ##argumentList.append('') #this argument is reserved for the name of this script file
 ##argumentList.append(r'E:\CIWaterData\DaymetTimeSeriesData\Logan\precdatasets\OutNetCDF\precp_daily_one_data.nc')
@@ -63,23 +65,21 @@ outNetCDF_File = sys.argv[2]
 destNetCDF_FilePath = sys.argv[3]
 inTimeStep = int(sys.argv[4])
 
-
 try:
-
     #check if the input netcdf file exists
     if(os.path.isfile(inNetCDF_File) == False):
-        raise Exception("Input netcdf file " + inNetCDF_File +  " was not found.")
+        raise Exception("Input netcdf file ({0}) was not found.".format(inNetCDF_File))
         exit()
 
     #check if the output netcdf file temporary directory exists
     filePath = os.path.dirname(outNetCDF_File)
     if(os.path.isdir(filePath) == False):
-        raise Exception("Netcdf output temporary directory " + filePath +  " was not found.")
+        raise Exception("Netcdf output temporary directory ({0}) was not found.".format(filePath))
         exit()
 
     #check if the output netcdf file destination directoryt exists
     if(os.path.isdir(destNetCDF_FilePath) == False):
-        raise Exception("Netcdf output destination directory " + destNetCDF_FilePath +  " was not found.")
+        raise Exception("Netcdf output destination directory ({0}) destNetCDF_FilePath was not found.".format(destNetCDF_FilePath))
         exit()
 
      # validate input time step value
@@ -89,18 +89,18 @@ try:
         raise Exception(errMsg)
         exit()
 
-    #open the netCDF file in readonly mode based on which we will be creating a new netcdf file
-    inRootGrp = Dataset(inNetCDF_File, 'r', format='NETCDF4')
+    # open the netCDF file in readonly mode based on which we will be creating a new netcdf file
+    inRootGrp = Dataset(inNetCDF_File, 'r', format='NETCDF3_CLASSIC')
 
-    #open a new blank netcdf file to which we will be writting data
-    outRootGrp = Dataset(outNetCDF_File, 'w', format='NETCDF4')
+    # open a new blank netcdf file to which we will be writting data
+    outRootGrp = Dataset(outNetCDF_File, 'w', format='NETCDF3_CLASSIC')
 
     # DEBUG: print global attributes of the original file:
 ##    for gAttribute in inRootGrp.ncattrs():
 ##        print 'Global attribute name:', gAttribute, '=', getattr(inRootGrp,gAttribute)
 
     # add global file level attributes to the new netcdf file
-    outRootGrp.start_year = inRootGrp.start_year #2010 # TODO: avoid this hard codeed year value by using 'inRootGrp.start_year' once  we run the new code in CalculateWatershedDayemetPrecpGDAL.py
+    outRootGrp.start_year = inRootGrp.start_year
     outRootGrp.data_variable_name = 'Prec'
     outRootGrp.data_time_step = inTimeStep
     outRootGrp.orginal_data_source = 'Daymet Software Version 2.0'
@@ -108,11 +108,6 @@ try:
     outRootGrp.modified_data_source = 'CI Water System'
     outRootGrp.spatial_reference = 'NAD83_UTM_Zone_12N'
     outRootGrp.datum = 'D_North_America_1983'
-
-    #  DEBUG: print global attributes of the new file:
-##    for gAttribute in outRootGrp.ncattrs():
-##        print 'Global attribute name:', gAttribute, '=', getattr(outRootGrp,gAttribute)
-
 
     # get dimension values from the original netcdf file
     inputTimeVar = inRootGrp.variables['time']
@@ -125,22 +120,7 @@ try:
     print(inputYvar.shape[0])
     print(inputPrecVar.shape)
 
-    #DEBUG:
-##    print(inputXvar[:])
-
-##    for vAttribute in inputPrecVar.ncattrs():
-##        print 'Prec attribute', vAttribute, '=', getattr(inputPrecVar, vAttribute)
-##
-##    for vAttribute in inputTimeVar.ncattrs():
-##        print 'time attribute', vAttribute, '=', getattr(inputTimeVar, vAttribute)
-##
-##    for vAttribute in inputXvar.ncattrs():
-##        print 'x attribute', vAttribute, '=', getattr(inputXvar, vAttribute)
-##
-##    for vAttribute in inputYvar.ncattrs():
-##        print 'y attribute', vAttribute, '=', getattr(inputYvar, vAttribute)
-
-    # Create 3 dimensions for the 3 variables: time, x and y
+    # create 3 dimensions for the 3 variables: time, x and y
     dataPointsPerDayNeeded = 24/inTimeStep
     outTimeDimensionSize = inputTimeVar.shape[0] * dataPointsPerDayNeeded
     outXvarDimensionSize = inputXvar.shape[0]
@@ -155,8 +135,9 @@ try:
 ##        print dimName, len(dimObj)
 
 
-    # create a Prec variable of data type f4 that has data in all three dimensions
+    # create a Prec variable of data type f4 (32-bit floating point) that has data in all three dimensions
     vPrec= outRootGrp.createVariable('Prec', 'f4',('time', 'y', 'x'))
+
     # create a variable for each dimension to hold data for that specific dimension
     vTime = outRootGrp.createVariable('time', 'f8', ('time'))   #f8 is 64-bit floating point
     vX = outRootGrp.createVariable('x', 'f4', ('x'))            #f4 is 32-bit floating point
@@ -164,11 +145,6 @@ try:
 
     print(vPrec.shape)
     print(inputPrecVar.shape)
-
-    #DEBUG:
-##    for varKVP in outRootGrp.variables.iteritems():
-##        print varKVP[0]
-
 
     # add attributes to time variable
     vTime.units = 'hours since 0001-01-01 00:00:00.0'
@@ -193,37 +169,17 @@ try:
     vY.standard_name = inputYvar.standard_name
     vY.units = inputYvar.units
 
-    # DEBUG:
-##    for vAttribute in vPrec.ncattrs():
-##        print 'Prec attribute', vAttribute, '=', getattr(vPrec, vAttribute)
-##
-##    for vAttribute in vTime.ncattrs():
-##        print 'time attribute', vAttribute, '=', getattr(vTime, vAttribute)
-##
-##    for vAttribute in vX.ncattrs():
-##        print 'x attribute', vAttribute, '=', getattr(vX, vAttribute)
-##
-##    for vAttribute in vY.ncattrs():
-##        print 'y attribute', vAttribute, '=', getattr(vY, vAttribute)
-
     # assign data to x variable
     vX[:] = inputXvar[:]
 
-    # DEBUG:
-##    print(vX[:])
-
     # assign data to y variable
     vY[:] = inputYvar[:]
-
-    # DEBUG:
-##    print(vY[:])
 
     # assign time data to time variable
     dataYear = outRootGrp.start_year
     startDate = datetime.date(dataYear, 1, 1)
     dates =[datetime.datetime(dataYear,1,1,0,0,0) + n*datetime.timedelta(hours=inTimeStep) for n in range(vTime.shape[0])]
     vTime[:] = date2num(dates, units=vTime.units, calendar=vTime.calendar)
-##    print(vTime[:])
 
     times, cols, rows = inputPrecVar.shape
     startTimeIndex = 0
@@ -249,7 +205,7 @@ try:
     elapsed_time = end_time - start_time
     print('Time taken for the script to finish: ' + str(elapsed_time) + ' seconds')
 
-    #close the netcdf files
+    # close the netcdf files
     outRootGrp.close()
     inRootGrp.close()
 
@@ -258,6 +214,7 @@ try:
     destNetCDFFile = os.path.join(destNetCDF_FilePath, outNetCDF_FileName)
     if(os.path.isfile(destNetCDFFile) == True):
         os.unlink(destNetCDFFile)
+
     # move the generated netcdf file to the destination folder
     shutil.move(outNetCDF_File, destNetCDF_FilePath)
     print('>>>done...')
