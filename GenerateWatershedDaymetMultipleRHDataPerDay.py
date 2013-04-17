@@ -42,8 +42,9 @@ outRootGrp = None
 inRootGrpTa = None
 inRootGrpVp = None
 
-# settings for runnning this code locally. To run this code on remote app server comment out the following 9 lines
-# To run locally, uncomment the following 9 lines
+# settings for runnning this code locally not part of the workflow. To run this code on remote app server as part of the workflow
+# comment out the following 9 lines
+# to run locally not part of a workflow, uncomment the following 9 lines
 ##argumentList = []
 ##argumentList.append('') #this argument is reserved for the name of this script file
 ##argumentList.append(r'E:\CIWaterData\Temp\ta_daily_multiple_data.nc')
@@ -67,7 +68,6 @@ if (len(sys.argv) < 7):
     raise Exception("There has to be 6 arguments to calculate multiple RH data points per day.")
     exit()
 
-
 # retrieve the passed arguments
 sourceTaNetCDFile = sys.argv[1]
 sourceVpdNetCDFFile = sys.argv[2]
@@ -80,31 +80,26 @@ try:
 
     # check the netcdf vpd data file exists
     if(os.path.isfile(sourceVpdNetCDFFile) == False):
-        raise Exception("Watershed vapor presssure netcdf input file ({0}) was not found.".format(sourceVpdNetCDFFile))
-        exit()
+        sys.exit("Watershed vapor presssure netcdf input file ({0}) was not found.".format(sourceVpdNetCDFFile))
 
     # check the netcdf temp data file exists
     if(os.path.isfile(sourceTaNetCDFile) == False):
-        raise Exception("Watershed temperature netcdf input file ({0}) was not found.".format(sourceTaNetCDFile))
-        exit()
+        sys.exit("Watershed temperature netcdf input file ({0}) was not found.".format(sourceTaNetCDFile))
 
     # check if the output netcdf file temporary directory exists
     filePath = os.path.dirname(outRH_NetCDFFile)
     if(os.path.isdir(filePath) == False):
-        raise Exception("Netcdf output temporary directory ({0}) was not found.".format(filePath))
-        exit()
+        sys.exit("Netcdf output temporary directory ({0}) was not found.".format(filePath))
 
     # check the netcdf final output directory exists
     if(os.path.isdir(destNetCDF_FilePath) == False):
-        raise Exception("Destination Netcdf output directory ({0}) was not found.".format(destNetCDF_FilePath))
-        exit()
+        sys.exit("Destination Netcdf output directory ({0}) was not found.".format(destNetCDF_FilePath))
 
     # validate input time step value
     if(inTimeStep != 1 and inTimeStep != 2 and inTimeStep != 3 and inTimeStep != 4 and inTimeStep != 6):
         errMsg = "Provided time step value ("  + inTimeStep +  ") is not a valid time step value.\n"
         errMsg += "Valid values are: 1, 2, 3, 4, and 6."
-        raise Exception(errMsg)
-        exit()
+        sys.exit(errMsg)
 
     # check that the netcdf input file directory and the output directory are not the same directory
     inTaFilePath = os.path.dirname(sourceTaNetCDFile)
@@ -121,8 +116,7 @@ try:
     if(inTimeStep != inRootGrpTa.data_time_step or inTimeStep != inRootGrpVp.data_time_step):
         errMsg = "Provided time step value ("  + inTimeStep +  ") for the ouput RH netcdf is not a valid time step value.\n"
         errMsg += "It must match with the time step used in the temperature and vapor pressure files."
-        raise Exception(errMsg)
-        exit()
+        sys.exit(errMsg)
 
     inputTaVar = inRootGrpTa.variables[inRootGrpTa.data_variable_name]
     inputTaXVar = inRootGrpTa.variables['x']
@@ -132,6 +126,7 @@ try:
     inputVpVar = inRootGrpVp.variables[inRootGrpVp.data_variable_name]
     inputVpTimeVar = inRootGrpVp.variables['time']
 
+    #DEBUG: print netcdf variable diemensions
     print('Dimension of Temp var: ' + str(inputTaVar.shape))
     print('Dimension of Vp var: ' + str(inputVpVar.shape))
 
@@ -148,7 +143,7 @@ try:
     outRootGrp.spatial_reference = 'NAD83_UTM_Zone_12N'
     outRootGrp.datum = 'D_North_America_1983'
 
-     # create 3 dimensions
+    # create 3 dimensions for the output netcdf file
     outTimeDimensionSize = inputVpVar.shape[0]
     outYvarDimensionSize = inputVpVar.shape[1]
     outXvarDimensionSize = inputVpVar.shape[2]
@@ -157,7 +152,7 @@ try:
     outRootGrp.createDimension('x', outXvarDimensionSize)
     outRootGrp.createDimension('y', outYvarDimensionSize)
 
-    # print each dimension name, dimension length
+    #DEBUG: print each dimension name, dimension length
     for dimName, dimObj in outRootGrp.dimensions.iteritems():
         print dimName, len(dimObj)
 
@@ -169,6 +164,7 @@ try:
     vX = outRootGrp.createVariable('x', 'f4', ('x'))            #f4: 32-bit floating point
     vY = outRootGrp.createVariable('y', 'f4', ('y'))
 
+    #DEBUG: print demensions of output variable rh and input variable vp
     print(vRH.shape)
     print(inputVpVar.shape)
 
@@ -233,13 +229,13 @@ try:
         # write the RH data to the output netcdf file
         vRH[time_step:time_step+1, 0:cols, 0:rows] = outRhDataArray[0:1, 0:cols, 0:rows]
 
+    # closing of the output netcdf file is necessary here before we can move this file to the destination folder
+    outRootGrp.close()
+    outRootGrp = None
+
     end_time = time.clock()
     elapsed_time = end_time - start_time
     print('Time taken for the script to finish: ' + str(elapsed_time) + ' seconds')
-
-    inRootGrpTa.close()
-    inRootGrpVp.close()
-    outRootGrp.close()
 
     # if the output netcdf file already exists at the destination folder, delete it before we can move the file there
     outNetCDF_FileName = os.path.basename(outRH_NetCDFFile)
@@ -252,18 +248,18 @@ try:
     print("Done...")
 
 except:
-    if(outRootGrp != None):
-        outRootGrp.close()
-
-    if(inRootGrpTa != None):
-        inRootGrp.close()
-
-    if(inRootGrpVp != None):
-        inRootGrp.close()
-
     tb = sys.exc_info()[2]
     tbinfo = traceback.format_tb(tb)[0]
     pyErrMsg = "PYTHON ERRORS:\nTraceback Info:\n" + tbinfo + "\nError Info:\n    " + str(sys.exc_type)+ ": " + str(sys.exc_value) + "\n"
     print(pyErrMsg)
     print('>>>done...with exception')
     raise Exception(pyErrMsg)
+
+finally:
+    #close the netcdf files
+    if(inRootGrpTa != None):
+        inRootGrpTa.close()
+    if(inRootGrpVp != None):
+        inRootGrpVp.close()
+    if(outRootGrp != None):
+        outRootGrp.close()

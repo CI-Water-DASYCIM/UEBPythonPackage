@@ -28,12 +28,14 @@ import glob
 import shutil
 
 # local variables
-InWSDEMFile = None # this is the file generated after regriding the DEM file to match with buffered watershed
+InWSDEMRasterFile = None # this is the file generated after regriding the DEM file to match with buffered watershed
 OutSlopeNetCDFFileName = None
 OutWSDEMSlopeFileName = "ws_slope.tif" # temporary file
+gp = None
 
-# settings for runnning this code locally. To run this code on remote app server comment out the following 5 lines
-# to run locally, uncomment the following 5 lines
+# settings for runnning this code locally not part of the workflow. To run this code on remote app server as part of the workflow
+# comment out the following 5 lines
+# to run locally not part of a workflow, uncomment the following 5 lines
 ##argumentList = []
 ##argumentList.append('') #this argument is reserved for the name of this script file
 ##argumentList.append(r'E:\CIWaterData\Temp\ws_dem.tif')
@@ -50,16 +52,16 @@ if (len(sys.argv) < 3):
     exit()
 
 # retrieve passed argument
-InWSDEMFile = sys.argv[1]
+InWSDEMRasterFile = sys.argv[1]
 OutSlopeNetCDFFileName = sys.argv[2]
 
 # check if provided DEM file exists
-if(os.path.isfile(InWSDEMFile) == False):
+if(os.path.isfile(InWSDEMRasterFile) == False):
     print('Exception')
-    raise Exception("Specified watershed DEM file ({0}) was not found.".format(InWSDEMFile))
+    raise Exception("Specified watershed DEM file ({0}) was not found.".format(InWSDEMRasterFile))
     exit()
 
-filePath = os.path.dirname(InWSDEMFile)
+filePath = os.path.dirname(InWSDEMRasterFile)
 OutSlopeNetCDFFile = os.path.join(filePath, OutSlopeNetCDFFileName)
 OutWSDEMSlopeFile = os.path.join(filePath, OutWSDEMSlopeFileName)
 
@@ -73,15 +75,15 @@ for filename in slopeRasterFiles:
 # create the Geoprocessor object
 gp = arcgisscripting.create()
 
+# check out any necessary licenses
+gp.CheckOutExtension("spatial")
+
 try:
     InMeasurementType = "DEGREE"
     ZFactor = "1"
 
-    # check out ArcGIS Spatial Analyst extension license
-    gp.CheckOutExtension("Spatial")
-
     # Process: Slope
-    gp.Slope_sa(InWSDEMFile, OutWSDEMSlopeFile, InMeasurementType, ZFactor)
+    gp.Slope_sa(InWSDEMRasterFile, OutWSDEMSlopeFile, InMeasurementType, ZFactor)
 
     # generate netcdf slope file
     InWSDEMSlopeFile = OutWSDEMSlopeFile
@@ -103,3 +105,8 @@ except:
     print(pyErrMsg)
     print('>>>done...with exception')
     raise Exception(pyErrMsg)
+finally:
+    # check in any necessary licenses
+    if(gp != None):
+        gp.CheckInExtension("spatial")
+        del gp

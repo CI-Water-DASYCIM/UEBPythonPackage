@@ -28,9 +28,11 @@ import shutil
 InWS_DEM_File = None
 OutWSDEMAspectFileName = "ws_aspect.tif" # temporary file
 OutAspectNetCDFFileName = None
+gp = None
 
-# settings for runnning this code locally. To run this code on remote app server comment out the following 5 lines
-# To run this code locally, uncomment the following 5 lines
+# settings for runnning this code locally not part of the workflow. To run this code on remote app server as part of the workflow
+# comment out the following 5 lines
+# to run locally not part of a workflow, uncomment the following 5 lines
 ##argumentList = []
 ##argumentList.append('') #this argument is reserved for the name of this script file
 ##argumentList.append(r'E:\CIWaterData\Temp\ws_dem.tif')
@@ -95,3 +97,8 @@ except:
     print(pyErrMsg)
     print('>>>Done...with exception')
     raise Exception(pyErrMsg)
+finally:
+    # check in any necessary licenses
+    if(gp != None):
+        gp.CheckInExtension("spatial")
+        del gp

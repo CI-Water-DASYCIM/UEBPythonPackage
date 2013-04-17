@@ -37,8 +37,9 @@ destNetCDF_FilePath = None
 outRootGrp = None
 inRootGrp = None
 
-# settings for runnning this code locally. To run this code on remote app server comment out the following 7 lines
-# To run locally, uncmment the following 7 lines
+# settings for runnning this code locally not part of the workflow. To run this code on remote app server as part of the workflow
+# comment out the following 7 lines
+# to run locally not part of a workflow, uncomment the following 7 lines
 ##argumentList = []
 ##argumentList.append('') #this argument is reserved for the name of this script file
 ##argumentList.append(r'E:\CIWaterData\DaymetTimeSeriesData\Logan\precdatasets\OutNetCDF\precp_daily_one_data.nc')
@@ -58,7 +59,6 @@ if (len(sys.argv) < 4):
     raise Exception("There has to be 4 arguments to calculate multiple precipitation data points per day.")
     exit()
 
-
 # retrieve the passed arguments
 inNetCDF_File = sys.argv[1]
 outNetCDF_File = sys.argv[2]
@@ -68,26 +68,22 @@ inTimeStep = int(sys.argv[4])
 try:
     #check if the input netcdf file exists
     if(os.path.isfile(inNetCDF_File) == False):
-        raise Exception("Input netcdf file ({0}) was not found.".format(inNetCDF_File))
-        exit()
+        sys.exit("Input netcdf file ({0}) was not found.".format(inNetCDF_File))
 
     #check if the output netcdf file temporary directory exists
     filePath = os.path.dirname(outNetCDF_File)
     if(os.path.isdir(filePath) == False):
-        raise Exception("Netcdf output temporary directory ({0}) was not found.".format(filePath))
-        exit()
+        sys.exit("Netcdf output temporary directory ({0}) was not found.".format(filePath))
 
     #check if the output netcdf file destination directoryt exists
     if(os.path.isdir(destNetCDF_FilePath) == False):
-        raise Exception("Netcdf output destination directory ({0}) destNetCDF_FilePath was not found.".format(destNetCDF_FilePath))
-        exit()
+        sys.exit("Netcdf output destination directory ({0}) destNetCDF_FilePath was not found.".format(destNetCDF_FilePath))
 
      # validate input time step value
     if(inTimeStep != 1 and inTimeStep != 2 and inTimeStep != 3 and inTimeStep != 4 and inTimeStep != 6):
         errMsg = "Provided time step value ("  + inTimeStep +  ") is not a valid time step value.\n"
         errMsg += "Valid values are: 1, 2, 3, 4, and 6."
-        raise Exception(errMsg)
-        exit()
+        sys.exit(errMsg)
 
     # open the netCDF file in readonly mode based on which we will be creating a new netcdf file
     inRootGrp = Dataset(inNetCDF_File, 'r', format='NETCDF3_CLASSIC')
@@ -157,7 +153,7 @@ try:
     vPrec.coordinates  = inputPrecVar.coordinates
     vPrec.grid_mapping  = inputPrecVar.grid_mapping
     vPrec. missing_value  = inputPrecVar. missing_value
-    vPrec.units  = 'mm'
+    vPrec.units  = 'meters'
 
     # add attributes to x variable
     vX.long_name = inputXvar.long_name
@@ -191,23 +187,24 @@ try:
         startTimeIndex = time_step * dataPointsPerDayNeeded
         outTempDataArray = numpy.empty((dataPointsPerDayNeeded,cols, rows), dtype=numpy.float32)
         inDataSlice = numpy.empty((dataPointsPerDayNeeded, cols, rows), dtype=numpy.float32)
-        inDataSlice[:] = inputPrecVar[time_step:time_step+1, 0:cols, 0:rows]
+        inDataSlice[:] = inputPrecVar[time_step:time_step+1, 0:cols, 0:rows] /24 # to convert from mm/day to mm/hr
         for row in range(0, rows):
             for col in range(0, cols):
-                outPrecValue = inDataSlice[0][col][row]/dataPointsPerDayNeeded
+                outPrecValue = inDataSlice[0][col][row] /1000 # to convert from mm to meters
                 for dataPoint in range(0, dataPointsPerDayNeeded):
                     outTempDataArray[dataPoint][col][row] = outPrecValue
 
         # write the Prec data to the output netcdf file
         vPrec[startTimeIndex:startTimeIndex + dataPointsPerDayNeeded, 0:cols, 0:rows] = outTempDataArray[0:dataPointsPerDayNeeded, 0:cols, 0:rows]
+        print(vPrec[startTimeIndex:startTimeIndex + dataPointsPerDayNeeded, 0:cols, 0:rows])
 
     end_time = time.clock()
     elapsed_time = end_time - start_time
     print('Time taken for the script to finish: ' + str(elapsed_time) + ' seconds')
 
-    # close the netcdf files
+    # close the output netcdf file - closing is necessary before we can move this file to the destination folder
     outRootGrp.close()
-    inRootGrp.close()
+    outRootGrp = None
 
     # if the output netcdf file already exists at the destination folder, delete it before we can move the file there
     outNetCDF_FileName = os.path.basename(outNetCDF_File)
@@ -220,13 +217,15 @@ try:
     print('>>>done...')
 
 except:
-    if(outRootGrp != None):
-        outRootGrp.close()
-    if(inRootGrp != None):
-        inRootGrp.close()
     tb = sys.exc_info()[2]
     tbinfo = traceback.format_tb(tb)[0]
     pyErrMsg = "PYTHON ERRORS:\nTraceback Info:\n" + tbinfo + "\nError Info:\n    " + str(sys.exc_type)+ ": " + str(sys.exc_value) + "\n"
     print(pyErrMsg)
     print('>>>done...with exception')
     raise Exception(pyErrMsg)
+
+finally:
+    if(outRootGrp != None):
+        outRootGrp.close()
+    if(inRootGrp != None):
+        inRootGrp.close()

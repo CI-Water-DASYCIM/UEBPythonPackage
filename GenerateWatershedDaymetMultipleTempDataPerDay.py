@@ -45,8 +45,9 @@ inRootGrpTmin = None
 inRootGrpTmax = None
 outRootGrp = None
 
-# settings for runnning this code locally. To run this code on remote app server comment out the following 11 lines
-# To run locally, uncomment the following 11 lines
+# settings for runnning this code locally not part of the workflow. To run this code on remote app server as part of the workflow
+# comment out the following 11 lines
+# to run locally not part of a workflow, uncomment the following 11 lines
 ##argumentList = []
 ##argumentList.append('') #this argument is reserved for the name of this script file
 ##argumentList.append(r'E:\CIWaterData\DaymetTimeSeriesData\Logan\tempdatasets\OutNetCDF')
@@ -104,34 +105,28 @@ def getTminFactor(hour, interval):
 try:
     # check the netcdf temporary output directory exists
     if(os.path.isdir(outNetCDFFilePath) == False):
-        raise Exception("Netcdf output directory ({0}) was not found.".format(outNetCDFFilePath))
-        exit()
+        sys.exit("Netcdf output directory ({0}) was not found.".format(outNetCDFFilePath))
 
     # check the netcdf final output directory exists
     if(os.path.isdir(destNetCDF_FilePath) == False):
-        raise Exception("Netcdf final output directory ({0}) was not found.".format(destNetCDF_FilePath))
-        exit()
+        sys.exit("Netcdf final output directory ({0}) was not found.".format(destNetCDF_FilePath))
 
     # check the netcdf input directory exists
     if(os.path.isdir(sourceTaNetCDFilePath) == False):
-        raise Exception("Netcdf input directory ({0}) was not found.".format(sourceTaNetCDFilePath))
-        exit()
+        sys.exit("Netcdf input directory ({0}) was not found.".format(sourceTaNetCDFilePath))
 
     inTminNetCDF_File = os.path.join(sourceTaNetCDFilePath, inTminNetCDF_FileName)
     if(os.path.isfile(inTminNetCDF_File) == False):
-        raise Exception("Input netcdf file ({0}) was not found.".format(inTminNetCDF_File))
-        exit()
+        sys.exit("Input netcdf file ({0}) was not found.".format(inTminNetCDF_File))
 
     inTmaxNetCDF_File = os.path.join(sourceTaNetCDFilePath, inTmaxNetCDF_FileName)
     if(os.path.isfile(inTmaxNetCDF_File) == False):
-        raise Exception("Input netcdf file ({0}) was not found.".format(inTmaxNetCDF_File))
-        exit()
+        sys.exit("Input netcdf file ({0}) was not found.".format(inTmaxNetCDF_File))
 
     if(inTimeStep != 1 and inTimeStep != 2 and inTimeStep != 3 and inTimeStep != 4 and inTimeStep != 6):
         errMsg = "Provided time step value ("  + inTimeStep +  ") is not a valid time step value.\n"
         errMsg += "Valid values are: 1, 2, 3, 4, and 6."
-        raise Exception(errMsg)
-        exit()
+        sys.exit(errMsg)
 
     # open the netCDF file that has minimum daily temp data. Open in readonly mode based on which we will be creating a new netcdf file
     inRootGrpTmin = Dataset(inTminNetCDF_File, 'r', format='NETCDF3_CLASSIC')
@@ -180,6 +175,7 @@ try:
     vX = outRootGrp.createVariable('x', 'f4', ('x'))            #f4 is 32-bit floating point
     vY = outRootGrp.createVariable('y', 'f4', ('y'))
 
+    #DEBUG: print dimensions of the variable temp and tmin
     print(vTemp.shape)
     print(inputTminVar.shape)
 
@@ -253,14 +249,13 @@ try:
         # write the Temp data to the output netcdf file
         vTemp[startTimeIndex:startTimeIndex+dataPointsPerDayNeeded, 0:cols, 0:rows] = outTempDataArray[0:dataPointsPerDayNeeded, 0:cols, 0:rows]
 
+    # closing of the output netcdf file is necessary before we can move this to the destination folder
+    outRootGrp.close()
+    outRootGrp = None
+
     end_time = time.clock()
     elapsed_time = end_time - start_time
     print(str(elapsed_time) + ' seconds')
-
-    #close the netcdf files
-    inRootGrpTmin.close()
-    inRootGrpTmax.close()
-    outRootGrp.close()
 
     # if the output netcdf file already exists at the destination folder, delete it before we can move the file there
     destNetCDFFile = os.path.join(destNetCDF_FilePath, outNetCDF_FileName)
@@ -272,17 +267,18 @@ try:
     print(">>>Done...")
 
 except:
-   #close the netcdf files
-    if(inRootGrpTmin != None):
-        inRootGrpTmin.close()
-    if(inRootGrpTmax != None):
-        inRootGrpTmax.close()
-    if(outRootGrp != None):
-        outRootGrp.close()
-
     tb = sys.exc_info()[2]
     tbinfo = traceback.format_tb(tb)[0]
     pyErrMsg = "PYTHON ERRORS:\nTraceback Info:\n" + tbinfo + "\nError Info:\n    " + str(sys.exc_type)+ ": " + str(sys.exc_value) + "\n"
     print(pyErrMsg)
     print('>>>done...with exception')
     raise Exception(pyErrMsg)
+
+finally:
+    #close the netcdf files
+    if(inRootGrpTmin != None):
+        inRootGrpTmin.close()
+    if(inRootGrpTmax != None):
+        inRootGrpTmax.close()
+    if(outRootGrp != None):
+        outRootGrp.close()

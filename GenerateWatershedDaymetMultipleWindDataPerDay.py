@@ -36,8 +36,9 @@ inWindSpeed = None
 outRootGrp = None
 inRootGrp = None
 
-# settings for runnning this code locally. To run this code on remote app server comment out the following 7 lines
-# To run locally, uncomment the following 7 lines
+# settings for runnning this code locally not part of the workflow. To run this code on remote app server as part of the workflow
+# comment out the following 7 lines
+# to run locally not part of a workflow, uncomment the following 7 lines
 ##argumentList = []
 ##argumentList.append('') #this argument is reserved for the name of this script file
 ##argumentList.append(r'E:\CIWaterData\Temp\precp_daily_multiple_data.nc')
@@ -57,7 +58,6 @@ if (len(sys.argv) < 5):
     raise Exception("There has to be 4 arguments to calculate multiple wind speed data points per day.")
     exit()
 
-
 inPrecpNetCDF_File = sys.argv[1]
 outWindNetCDF_File = sys.argv[2]
 destNetCDF_FilePath = sys.argv[3]
@@ -67,26 +67,22 @@ try:
 
     # check if the input netcdf file exists
     if(os.path.isfile(inPrecpNetCDF_File) == False):
-        raise Exception("Input netcdf file ({0}) was not found.".format(inPrecpNetCDF_File))
-        exit()
+        sys.exit("Input netcdf file ({0}) was not found.".format(inPrecpNetCDF_File))
 
     # check if the output netcdf file directoryt exists
     filePath = os.path.dirname(outWindNetCDF_File)
     if(os.path.isdir(filePath) == False):
-        raise Exception("Netcdf output directory ({0}) was not found.".format(filePath))
-        exit()
+        sys.exit("Netcdf output directory ({0}) was not found.".format(filePath))
 
     # check if the output netcdf file destination directoryt exists
     if(os.path.isdir(destNetCDF_FilePath) == False):
-        raise Exception("Netcdf output destination directory ({0}) was not found.".format(destNetCDF_FilePath))
-        exit()
+        sys.exit("Netcdf output destination directory ({0}) was not found.".format(destNetCDF_FilePath))
 
      # validate input wind speed value
     if(inWindSpeed < 0 and inWindSpeed > 20):
         errMsg = "Provided wind speed value ("  + inWindSpeed +  ") is not a valid value.\n"
         errMsg += "Valid values are in the range of 0 to 20."
-        raise Exception(errMsg)
-        exit()
+        sys.exit(errMsg)
 
     # open the netCDF file in readonly mode based on which we will be creating a new netcdf file
     inRootGrp = Dataset(inPrecpNetCDF_File, 'r', format='NETCDF3_CLASSIC')
@@ -114,6 +110,7 @@ try:
     inputYvar = inRootGrp.variables['y']
     inputPrecVar = inRootGrp.variables['Prec']
 
+    #DEBUG: print dimensions of variables in input netcdf file
     print(inputTimeVar.shape[0])
     print(inputXvar.shape[0])
     print(inputYvar.shape[0])
@@ -121,7 +118,6 @@ try:
 
     # Create 3 dimensions for the 3 variables: time, x and y based on the dimension of the
     # corresponding variables from the precp netcdf file
-
     outTimeDimensionSize = inputTimeVar.shape[0]
     outXvarDimensionSize = inputXvar.shape[0]
     outYvarDimensionSize = inputYvar.shape[0]
@@ -184,11 +180,12 @@ try:
         shape = (1, cols, rows)
         vWind[time_step: time_step +1, 0:cols, 0:rows] = numpy.ones(shape, dtype=numpy.float32) * inWindSpeed
 
+    #DEBUG: print demension of the output variable wind
     print(vWind.shape)
 
-    # close the netcdf files
+    # close the output netcdf file so that it can be moved to the destination folder
     outRootGrp.close()
-    inRootGrp.close()
+    outRootGrp = None
 
     # if the output netcdf file already exists at the destination folder, delete it before we can move the file there
     outNetCDF_FileName = os.path.basename(outWindNetCDF_File)
@@ -202,14 +199,16 @@ try:
     print('>>>done...')
 
 except:
-    if(outRootGrp != None):
-        outRootGrp.close()
-    if(inRootGrp != None):
-        inRootGrp.close()
-
     tb = sys.exc_info()[2]
     tbinfo = traceback.format_tb(tb)[0]
     pyErrMsg = "PYTHON ERRORS:\nTraceback Info:\n" + tbinfo + "\nError Info:\n    " + str(sys.exc_type)+ ": " + str(sys.exc_value) + "\n"
     print(pyErrMsg)
     print('>>>done...with exception')
     raise Exception(pyErrMsg)
+
+finally:
+    if(outRootGrp != None):
+        outRootGrp.close()
+    if(inRootGrp != None):
+        inRootGrp.close()
+

@@ -29,6 +29,9 @@ import os
 import sys
 import traceback
 
+# check out any necessary licenses
+arcpy.CheckOutExtension("spatial")
+
 # local variables
 wsNLCDRasterFile = None
 ccValueRasterFileName = "WSCCValues.img"        #temporary file
@@ -40,8 +43,9 @@ netCDFHCANValueFileName = None
 netCDFLAIValueFileName = None
 netCDFYCAGEValueFileName = None
 
-# settings for runnning this code locally. To run this code on remote app server comment out the following 8 lines
-# To run locally uncomment the following 8 lines
+# settings for runnning this code locally not part of the workflow. To run this code on remote app server as part of the workflow
+# comment out the following 8 lines
+# to run locally not part of a workflow, uncomment the following 8 lines
 ##argumentList = []
 ##argumentList.append('') #this argument is reserved for the name of this script file
 ##argumentList.append(r'E:\CIWaterData\Temp\ws_nlcd.img')
@@ -203,40 +207,39 @@ def generateSiteVariableData(siteVariableDataArray, dataRasterFileToCreate, netC
         bandDimension = ""
 
         arcpy.RasterToNetCDF_md(dataRasterFileToCreate, netCDFDataFileToCreate, variable, units, XDimension, YDimension, bandDimension)
-
-# check if provided watershed NLCD dataset raster file exists
-if(os.path.isfile(wsNLCDRasterFile) == True):
-    filePath = os.path.dirname(wsNLCDRasterFile)
-
-    # set the path for the temporary ws cc raster file
-    ccValueRasterFile = os.path.join(filePath, ccValueRasterFileName)
-
-    # set the path for the temporary ws cc raster file
-    hcanValueRasterFile = os.path.join(filePath, hcanValueRasterFileName)
-
-    # set the path for the temporary ws lai raster file
-    laiValueRasterFile = os.path.join(filePath, laiValueRasterFileName)
-
-    # set the path for the temporary ws ycage raster file
-    ycageValueRasterFile = os.path.join(filePath, ycageValueRasterFileName)
-
-    # set the path for the output cc value netcdf file
-    netCDFCCValueFile = os.path.join(filePath, netCDFCCValueFileName)
-
-    # set the path for the output hcan value netcdf file
-    netCDFHCANValueFile = os.path.join(filePath, netCDFHCANValueFileName)
-
-    # set the path for the output lai value netcdf file
-    netCDFLAIValueFile = os.path.join(filePath, netCDFLAIValueFileName)
-
-    # set the path for the output ycage value netcdf file
-    netCDFYCAGEValueFile = os.path.join(filePath, netCDFYCAGEValueFileName)
-else:
-    print('Exception')
-    raise Exception("Exception:Specified buffered watershed shape file ({0}) was not found.".format(wsNLCDRasterFile))
-    exit()
-
 try:
+    # check if provided watershed NLCD dataset raster file exists
+    if(os.path.isfile(wsNLCDRasterFile) == True):
+        filePath = os.path.dirname(wsNLCDRasterFile)
+
+        # set the path for the temporary ws cc raster file
+        ccValueRasterFile = os.path.join(filePath, ccValueRasterFileName)
+
+        # set the path for the temporary ws cc raster file
+        hcanValueRasterFile = os.path.join(filePath, hcanValueRasterFileName)
+
+        # set the path for the temporary ws lai raster file
+        laiValueRasterFile = os.path.join(filePath, laiValueRasterFileName)
+
+        # set the path for the temporary ws ycage raster file
+        ycageValueRasterFile = os.path.join(filePath, ycageValueRasterFileName)
+
+        # set the path for the output cc value netcdf file
+        netCDFCCValueFile = os.path.join(filePath, netCDFCCValueFileName)
+
+        # set the path for the output hcan value netcdf file
+        netCDFHCANValueFile = os.path.join(filePath, netCDFHCANValueFileName)
+
+        # set the path for the output lai value netcdf file
+        netCDFLAIValueFile = os.path.join(filePath, netCDFLAIValueFileName)
+
+        # set the path for the output ycage value netcdf file
+        netCDFYCAGEValueFile = os.path.join(filePath, netCDFYCAGEValueFileName)
+    else:
+        errMsg = "Specified watershed NLCD raster file ({0}) was not found.".format(wsNLCDRasterFile)
+        print(errMsg)
+        sys.exit(errMsg)
+
     # if there exists a previously cc netcdf file delete it
     if(os.path.isfile(netCDFCCValueFile) == True):
         os.unlink(netCDFCCValueFile)
@@ -299,14 +302,14 @@ try:
             wsLAIValueArray[rowNum, colNum] = laiValue
             wsYCAGEValueArray[rowNum, colNum] = ycageValue
 
-    # get properties of the input raster
+    # get properties of the input watershed nlcd raster
     wsNLCDRasterDesc = arcpy.Describe(wsNLCDRasterFile)
 
-    # coordinates of the lower left corner
+    # coordinates of the lower left corner of watershed nlcd raster file
     rasXmin = wsNLCDRasterDesc.Extent.XMin
     rasYmin = wsNLCDRasterDesc.Extent.YMin
 
-    # cell size, raster size
+    # cell size, raster size of the watershed nlcd raster file
     rasMeanCellHeight = wsNLCDRasterDesc.MeanCellHeight
     rasMeanCellWidth = wsNLCDRasterDesc.MeanCellWidth
 
@@ -343,3 +346,6 @@ except:
     print(pyErrMsg)
     print('>>>done...with exception')
     raise Exception(pyErrMsg)
+finally:
+    # check in any necessary licenses
+    arcpy.CheckInExtension("spatial")

@@ -2,7 +2,7 @@
 # Name:     DaymetNumberOfDaysToProcess.py
 # Author:   Pabitra Dash (pabitra.dash@usu.edu)
 # Purpose:
-#   Reads a number from a text file
+#   Reads a number from a text file (NumberOfDaysToProcessDaymetData.txt)
 #   as number of days to process daymet data. Scripts related to Dayment
 #   data then can call the getNumberOfDays() in this file to generate data
 #   for any number of days by changing the number of days in the text file
@@ -13,6 +13,7 @@
 #-------------------------------------------------------------------------------
 
 import os
+import sys
 
 def main():
     pass
@@ -20,20 +21,18 @@ def main():
 if __name__ == '__main__':
     main()
 
-# test reading a text file
-
 def getNumberOfDays():
-    # TODO: read these 2 magic strings for dir path from a config file
-    fileToOpenOnLocal = r"E:\SoftwareProjects\CIWaterPythonScripts\NumberOfDaysToProcessDaymentData.txt"
-    fileToOpenOnRemote = r"C:\CIWaterPythonScripts\NumberOfDaysToProcessDaymentData.txt"
-    fileToOpen = None
+    # find the dir path of this python script location
+    thisScriptPath = os.path.dirname(sys.argv[0])
+    fileToOpen = os.path.join(thisScriptPath, 'NumberOfDaysToProcessDaymetData.txt')
 
-    if(os.path.isfile(fileToOpenOnRemote) == True):
-        fileToOpen = fileToOpenOnRemote
-    elif(os.path.isfile(fileToOpenOnLocal) == True):
-        fileToOpen = fileToOpenOnLocal
-
+    # default number of days to simulate
     numberOfDays = 365
+
+    # if the text file can't be found return 365 days as number of days to simulate
+    if(os.path.isfile(fileToOpen) == False):
+        return numberOfDays
+
     with open(fileToOpen) as file:
             numberOfDays = file.readline()
 
@@ -45,5 +44,4 @@ def getNumberOfDays():
         numberOfDays = 365
 
     return numberOfDays
-
 

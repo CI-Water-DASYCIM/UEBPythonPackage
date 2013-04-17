@@ -28,15 +28,17 @@ if __name__ == '__main__':
 
 import arcpy
 import numpy
-import arcgisscripting
 import os
 import sys
 import traceback
 
+# check out any necessary licenses
+arcpy.CheckOutExtension("spatial")
+
 #REF: http://gis.stackexchange.com/questions/20783/how-to-get-x-y-coordinates-and-cell-value-of-each-pixel-in-a-raster-using-python
 
 # local variables
-wsDEMFile = None
+wsDEMRasterFile = None
 latRasterFileName = "WSDEMLat.tif" #temporary file
 lonRasterFileName = "WSDEMLon.tif" #temporary file
 latFileName = None
@@ -46,8 +48,9 @@ lonRasterFile = None
 netCDFLatFile = None
 netCDFLonFile = None
 
-# settings for runnning this code locally. To run this code on remote app server comment out the following 6 lines
-# To run locally, uncomment the following 6 lines
+# settings for runnning this code locally not part of the workflow. To run this code on remote app server as part of the workflow
+# comment out the following 6 lines
+# to run locally not part of a workflow, uncomment the following 6 lines
 ##argumentList = []
 ##argumentList.append('') #this argument is reserved for the name of this script file
 ##argumentList.append(r'E:\CIWaterData\Temp\ws_dem.tif')
@@ -66,13 +69,13 @@ if (len(sys.argv) < 4):
     exit()
 
 # retrieve the passed argument
-wsDEMFile = sys.argv[1]
+wsDEMRasterFile = sys.argv[1]
 latFileName = sys.argv[2]
 lonFileName = sys.argv[3]
 
 # check if provided ws DEM file exists
-if(os.path.isfile(wsDEMFile) == True):
-    filePath = os.path.dirname(wsDEMFile)
+if(os.path.isfile(wsDEMRasterFile) == True):
+    filePath = os.path.dirname(wsDEMRasterFile)
 
     # set the path for the temporary lat raster file
     latRasterFile = os.path.join(filePath, latRasterFileName)
@@ -89,11 +92,11 @@ if(os.path.isfile(wsDEMFile) == True):
     netCDFLonFile = os.path.join(filePath, netCDFLonFileName)
 else:
     print('Exception')
-    raise Exception("Specified watershed DEM file ({0}) was not found.:".format(wsDEMFile))
+    raise Exception("Specified watershed DEM file ({0}) was not found.:".format(wsDEMRasterFile))
     exit()
 
 #Get properties of the input raster
-inRasterDesc = arcpy.Describe(wsDEMFile)
+inRasterDesc = arcpy.Describe(wsDEMRasterFile)
 
 try:
     # coordinates of the lower left corner
@@ -122,7 +125,7 @@ try:
     # otherwise calculate the mid point lon value for the dem file
     # and write to a text file Lon.txt
     if(rasYMax - rasYmin < 0.5):
-        filePath = os.path.dirname(wsDEMFile)
+        filePath = os.path.dirname(wsDEMRasterFile)
         outputFilePath = os.path.join(filePath,  lonFileName + '.txt')
         textFileWriter = None
         try:
@@ -138,7 +141,7 @@ try:
     # otherwise calculate the mid point lat value for the dem file
     # and write to a text file Lat.txt
     if(rasYMax - rasYmin < 0.5):
-        filePath = os.path.dirname(wsDEMFile)
+        filePath = os.path.dirname(wsDEMRasterFile)
         outputFilePath = os.path.join(filePath, latFileName + '.txt')
         textFileWriter = None
         try:
@@ -235,3 +238,6 @@ except:
     print(pyErrMsg)
     print('>>>done...with exception')
     raise Exception(pyErrMsg)
+finally:
+    # check in any necessary licenses
+    arcpy.CheckInExtension("spatial")

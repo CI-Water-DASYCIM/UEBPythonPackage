@@ -41,31 +41,39 @@ from netCDF4 import Dataset
 import gdal_merge
 import threading
 
+# Check out any necessary licenses
+arcpy.CheckOutExtension("spatial")
+
 # Local variables:
 sourceTaNetCDFilePath = None
 outNetCDFFilePath = None
 outNetCDFFileName = None
 outRasterFilePath = None
-clippedWSDEMFile = None
+clippedWSDEMRasterFile = None
 inTaDataFileNames = None
+gp = None
 
-# TODO: read these 2 magic strings for dir path from a config file
-localPyScriptsPath = r'E:\SoftwareProjects\CIWaterPythonScripts'
-remotePyScriptsPath = r'C:\CIWaterPythonScripts'
-if(os.path.isdir(remotePyScriptsPath) == True):
-    sys.path.append(remotePyScriptsPath)
-elif(os.path.isdir(localPyScriptsPath) == True):
-    sys.path.append(localPyScriptsPath)
-else:
-     raise Exception("Script file (" + DaymetNumberOfDaysToProcess.py +  ") was not found.")
-     exit()
+# find the dir path of this python script location
+thisScriptPath = os.path.dirname(sys.argv[0])
+
+# append the found path to the python search path
+sys.path.append(thisScriptPath)
+
+# check if the script file to read the number of days to simulate exists
+scriptFileToReadNumberOfDaysToSimulate = os.path.join(thisScriptPath,'DaymetNumberOfDaysToProcess.py')
+if(os.path.isfile(scriptFileToReadNumberOfDaysToSimulate) == False):
+    raise Exception("Script file ({0}) was not found.".format(scriptFileToReadNumberOfDaysToSimulate))
+    exit()
+
 
 import DaymetNumberOfDaysToProcess
 
-# settings for runnning this code locally. To run this code on remote app server comment out the following 10 lines
-# To run locally, uncomment the following 10 lines
+# settings for runnning this code locally not part of the workflow. To run this code on remote app server as part of the workflow
+# comment out the following 11 lines
+# to run locally not part of a workflow, uncomment the following 11 lines
+##thisScriptFullFilePath = os.path.join(thisScriptPath,'CalculateWatershedDayemtTempGDAL.py')
 ##argumentList = []
-##argumentList.append('') #this argument is reserved for the name of this script file
+##argumentList.append(thisScriptFullFilePath) #this argument is reserved for the name of this script file
 ##argumentList.append(r'E:\CIWaterData\DaymetTimeSeriesData\Logan\tempdatasets')
 ##argumentList.append(r'E:\CIWaterData\DaymetTimeSeriesData\Logan\tempdatasets\OutNetCDF')
 ##argumentList.append('tmin_daily_one_data.nc')
@@ -75,7 +83,6 @@ import DaymetNumberOfDaysToProcess
 ##argumentList.append('tmin')
 ##sys.argv = argumentList
 
-
 # the first argument sys.argv[0] is the name of this script file
 # excluding the name of the script file we need 7 more arguments, so total of 8
 if (len(sys.argv) < 8):
@@ -83,10 +90,10 @@ if (len(sys.argv) < 8):
     print('1st argument: Source Daymet files directory path')
     print('2nd argument: Directory path for output netcdf file')
     print('3rd argument: Output netcdf file name')
-    print('4th argument: Directory path for temporary ratser files')
-    print('5th argument: Watershed DEM file name path')
+    print('4th argument: Directory path for temporary output raster files')
+    print('5th argument: Input watershed DEM raster file name with path')
     print('6th argument: Name of each of the Daymet source datafile separated by semicolon' )
-    print('7th argument: Name of the data variable')
+    print('7th argument: Name of the data variable for the output netCDF file')
     raise Exception("There has to be 7 arguments to calculate Dayment temp at each grid of the watershed.")
     exit()
 
@@ -96,7 +103,7 @@ sourceTaNetCDFilePath = sys.argv[1]
 outNetCDFFilePath = sys.argv[2]
 outNetCDFFileName = sys.argv[3]
 outRasterFilePath = sys.argv[4]
-clippedWSDEMFile = sys.argv[5]
+clippedWSDEMRasterFile = sys.argv[5]
 inTaDataFileNames = sys.argv[6]
 dataSetVariableName = sys.argv[7]
 
@@ -171,6 +178,9 @@ def convertRasterToNetCDF(inputRasterFile, outNetCDFFile, dataSetVariableName):
     gp.RasterToNetCDF_md(inputRasterFile, outNetCDFFile, variable, units,
                             XDimension, YDimension, bandDimension)
 
+    # check in any necessary licenses
+    gp.CheckInExtension("spatial")
+
 def setNetCDFDDataUnits(netCDF_File, dataSetVariableName , units):
     #open the file with read/write mode (r+)
     rootGrp = Dataset(netCDF_File, 'r+', format='NETCDF3_CLASSIC')
@@ -212,8 +222,8 @@ try:
             raise Exception("Input netcdf file ({0}) was not found.".format(netcdfFile))
             exit()
 
-    if(os.path.isfile(clippedWSDEMFile) == False):
-        raise Exception("Input watershed DEM file ({0}) was not found.".format(clippedWSDEMFile))
+    if(os.path.isfile(clippedWSDEMRasterFile) == False):
+        raise Exception("Input watershed DEM file ({0}) was not found.".format(clippedWSDEMRasterFile))
         exit()
 
     # check the raster output directory exists
@@ -255,7 +265,7 @@ try:
     # grab the start time
     start_time = time.clock()
 
-    WSdesc = arcpy.Describe(clippedWSDEMFile)
+    WSdesc = arcpy.Describe(clippedWSDEMRasterFile)
     wsCS = ""
     wsCS = WSdesc.spatialReference.name
     wsCS = wsCS.replace("_", " ")
@@ -269,7 +279,7 @@ try:
 
     # get the rectangular boundary of the WS dem file for clipping the
     # vp data raster file
-    wsBoundingBox = str(WSdesc.extent.XMin) + " " + str(WSdesc.extent.YMin) + " " + str(WSdesc.extent.XMax) + " " + str(WSdesc.extent.YMax)
+    wsBoundingBox = str(repr(WSdesc.extent.XMin)) + " " + str(repr(WSdesc.extent.YMin)) + " " + str(repr(WSdesc.extent.XMax)) + " " + str(repr(WSdesc.extent.YMax))
 
     # generate raster layer names and store in the above array
     # as well as create rsater layer from each of the input netcdf data files
@@ -295,7 +305,7 @@ try:
     gp.CheckOutExtension("spatial")
 
     # snap raster is neeed for projection of the data raster file to the watershed projection
-    gp.SnapRaster = clippedWSDEMFile
+    gp.SnapRaster = clippedWSDEMRasterFile
 
     startDate = datetime.date(dataYear, 1, 1)
     timeValueFormat = "%m/%d/%Y %H:%M:%S %p"
@@ -312,10 +322,11 @@ try:
 
     print('>>>raster start time:' + str(datetime.datetime.now()))
 
+    # get the number of days to simulate
+    daysInYear = DaymetNumberOfDaysToProcess.getNumberOfDays();
+
     # select data for each time band from each of the in memory raster layers and then
     # mosiac the raster layer to save to disk for a given day
-    daysInYear = DaymetNumberOfDaysToProcess.getNumberOfDays();
-##  daysInYear = 5 # TODO: For actual run set this to 365. It is now set for 5 days for demo purposes
     for day in range(0, daysInYear):
         newDay = startDate + datetime.timedelta(days= day)
         outRasterFileName = dataSetVariableName + newDay.strftime(rasterFileNameDateFormat) + '.tif'
@@ -411,7 +422,7 @@ try:
 
     # delete all files from the outRasterFilePath folder
     deleteAllFilesFromDirectory(outRasterFilePath)
-    del gp
+
     print('done...')
 
 except:
@@ -421,3 +432,10 @@ except:
     print(pyErrMsg)
     print('>>>done...with exception')
     raise Exception(pyErrMsg)
+finally:
+    # check in any necessary licenses
+    arcpy.CheckInExtension("spatial")
+    # check in any necessary licenses
+    if(gp != None):
+        gp.CheckInExtension("spatial")
+        del gp

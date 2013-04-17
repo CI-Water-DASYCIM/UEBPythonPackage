@@ -39,32 +39,38 @@ from netCDF4 import Dataset
 import gdal_merge
 import threading
 
+# Check out any necessary licenses
+arcpy.CheckOutExtension("spatial")
 
 # Local variables:
 sourcePrecpNetCDFilePath = None
 outNetCDFFilePath = None
 outNetCDFFileName = None
 outRasterFilePath = None
-clippedWSDEMFile = None
+clippedWSDEMRasterFile = None
 inPrecpDataFileNames = None
+gp = None
 
-# TODO: read these 2 magic strings for dir path from a config file
-localPyScriptsPath = r'E:\SoftwareProjects\CIWaterPythonScripts'
-remotePyScriptsPath = r'C:\CIWaterPythonScripts'
-if(os.path.isdir(remotePyScriptsPath) == True):
-    sys.path.append(remotePyScriptsPath)
-elif(os.path.isdir(localPyScriptsPath) == True):
-    sys.path.append(localPyScriptsPath)
-else:
-     raise Exception("Script file (DaymetNumberOfDaysToProcess.py) was not found.")
-     exit()
+# find the dir path of this python script location
+thisScriptPath = os.path.dirname(sys.argv[0])
+
+# append the found path to the python search path
+sys.path.append(thisScriptPath)
+
+# check if the script file to read the number of days to simulate exists
+scriptFileToReadNumberOfDaysToSimulate = os.path.join(thisScriptPath,'DaymetNumberOfDaysToProcess.py')
+if(os.path.isfile(scriptFileToReadNumberOfDaysToSimulate) == False):
+    raise Exception("Script file ({0}) was not found.".format(scriptFileToReadNumberOfDaysToSimulate))
+    exit()
 
 import DaymetNumberOfDaysToProcess
 
-# settings for runnning this code locally. To run this code on remote app server comment out the following 9 lines
-# To run this code locally uncomment the following 9 lines
+# settings for runnning this code locally not part of the workflow. To run this code on remote app server as part of the workflow
+# comment out the following 10 lines
+# to run locally not part of a workflow, uncomment the following 10 lines
+##thisScriptFullFilePath = os.path.join(thisScriptPath,'CalculateWatershedDaymetPrecpGDAL.py')
 ##argumentList = []
-##argumentList.append('') #this argument is reserved for the name of this script file
+##argumentList.append(thisScriptFullFilePath) #this argument is reserved for the name of this script file
 ##argumentList.append(r'E:\CIWaterData\DaymetTimeSeriesData\Logan\precdatasets')
 ##argumentList.append(r'E:\CIWaterData\DaymetTimeSeriesData\Logan\precdatasets\OutNetCDF')
 ##argumentList.append('precp_daily_one_data.nc')
@@ -81,7 +87,7 @@ if (len(sys.argv) < 7):
     print('2nd argument: Output netcdf file path (must be different from input netcdf file path)')
     print('3rd argument: Output netcdf file name')
     print('4th argument: Output raster file path')
-    print('5th argument: Input watershed DEM file name with file path')
+    print('5th argument: Input watershed DEM raster file name with file path')
     print('6th argument: List of input precp netcdf file names')
     raise Exception("There has to be 6 arguments to calculate Dayment precpitation at each grid of the watershed.")
     exit()
@@ -91,7 +97,7 @@ sourcePrecpNetCDFilePath = sys.argv[1]
 outNetCDFFilePath = sys.argv[2]
 outNetCDFFileName = sys.argv[3]
 outRasterFilePath = sys.argv[4]
-clippedWSDEMFile = sys.argv[5]
+clippedWSDEMRasterFile = sys.argv[5]
 inPrecpDataFileNames = sys.argv[6]
 
 # array to store all input Daymet netcdf file names
@@ -170,6 +176,9 @@ def convertRasterToNetCDF(inputRasterFile, outNetCDFFile):
     gp.RasterToNetCDF_md(inputRasterFile, outNetCDFFile, variable, units,
                             XDimension, YDimension, bandDimension)
 
+    # Check in any necessary licenses
+    gp.CheckInExtension("spatial")
+
 # param: netCDF_File netcdf file for which data variable units to be set
 # param: dataSetVariableName name of the variable for which units to be set
 # param: units the units to be set for the data variable
@@ -198,7 +207,7 @@ def setNetCDFDataYearAttribute(netCDF_File, dataYear):
     rootGrp.close()
 
 # param: netCDF_File the netcdf file for which the global attribute data_varaible_name needs to be set
-# pram: variableName name of the variable to be assigned to the global attribute data_variable_name
+# param: variableName name of the variable to be assigned to the global attribute data_variable_name
 def setNetCDFDataVariableNameAttribute(netCDF_File, variableName):
     # open the file with read/write mode (r+)
     rootGrp = Dataset(netCDF_File, 'r+', format='NETCDF3_CLASSIC')
@@ -218,8 +227,8 @@ try:
             raise Exception("Input netcdf file ({0}) was not found.".format(netcdfFile))
             exit()
 
-    if(os.path.isfile(clippedWSDEMFile) == False):
-        raise Exception("Input watershed DEM file ({0}) was not found.".format(clippedWSDEMFile))
+    if(os.path.isfile(clippedWSDEMRasterFile) == False):
+        raise Exception("Input watershed DEM file ({0}) was not found.".format(clippedWSDEMRasterFile))
         exit()
 
     # check the raster output directory exists
@@ -257,7 +266,7 @@ try:
         raise Exception("Data year was not found in the specified Daymet input data files.")
         exit()
 
-    WSdesc = arcpy.Describe(clippedWSDEMFile)
+    WSdesc = arcpy.Describe(clippedWSDEMRasterFile)
     wsCS = ""
     wsCS = WSdesc.spatialReference.name
     wsCS = wsCS.replace("_", " ")
@@ -269,9 +278,9 @@ try:
 
     wsGridMeanCellHeight = WSdesc.MeanCellHeight
 
-    # get the rectangular boundary of the WS dem file for clipping the
-    # precp data raster file
-    wsBoundingBox = str(WSdesc.extent.XMin) + " " + str(WSdesc.extent.YMin) + " " + str(WSdesc.extent.XMax) + " " + str(WSdesc.extent.YMax)
+    # get the rectangular boundary of the WS dem raster file for clipping the
+    # precp data raster file (repr() function is needed to preserve boundray value precision
+    wsBoundingBox = str(repr(WSdesc.extent.XMin)) + " " + str(repr(WSdesc.extent.YMin)) + " " + str(repr(WSdesc.extent.XMax)) + " " + str(repr(WSdesc.extent.YMax))
 
     # generate raster layer names and store in the above array
     # as well as create rsater layer from each of the input netcdf data files
@@ -298,7 +307,7 @@ try:
     gp.CheckOutExtension("spatial")
 
     # snap raster is neeed for projection of the data raster file to the watershed projection
-    gp.SnapRaster = clippedWSDEMFile
+    gp.SnapRaster = clippedWSDEMRasterFile
 
     startDay = 1
     startMonth = 1
@@ -404,7 +413,6 @@ try:
                             XDimension, YDimension, bandDimension)
     lockGP.release()
 
-    del gp
     end_time = time.time()
     elapsed_time = end_time - start_time
     print('>>>>Elapsed time in creating the final netcdf file:' + str(elapsed_time))
@@ -428,5 +436,11 @@ except:
     tbinfo = traceback.format_tb(tb)[0]
     pyErrMsg = "PYTHON ERRORS:\nTraceback Info:\n" + tbinfo + "\nError Info:\n    " + str(sys.exc_type)+ ": " + str(sys.exc_value) + "\n"
     print(pyErrMsg)
-    print('>>>done...with exception')
+    print('>>>Done...with exception')
     raise Exception(pyErrMsg)
+finally:
+    # check in any necessary licenses
+    arcpy.CheckInExtension("spatial")
+    if(gp != None):
+        gp.CheckInExtension("spatial")
+        del gp

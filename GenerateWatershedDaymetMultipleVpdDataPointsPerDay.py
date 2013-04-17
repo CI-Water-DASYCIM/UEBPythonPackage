@@ -29,7 +29,6 @@ import sys
 import traceback
 from netCDF4 import num2date, date2num
 
-
 # local variables
 inNetCDF_File = None
 outNetCDF_File = None
@@ -37,8 +36,9 @@ inTimeStep = None
 outRootGrp = None
 inRootGrp = None
 
-# settings for runnning this code locally. To run this code on remote app server comment out the following 6 lines
-# To run locally, uncomment the following 6 lines
+# settings for runnning this code locally not part of the workflow. To run this code on remote app server as part of the workflow
+# comment out the following 6 lines
+# to run locally not part of a workflow, uncomment the following 6 lines
 ##argumentList = []
 ##argumentList.append('') #this argument is reserved for the name of this script file
 ##argumentList.append(r'E:\CIWaterData\DaymetTimeSeriesData\Logan\vpdatasets\OutNetCDF\vp_daily_one_data.nc')
@@ -65,21 +65,18 @@ try:
 
     # check if the input netcdf file exists
     if(os.path.isfile(inNetCDF_File) == False):
-        raise Exception("Input netcdf file ({0}) was not found.".format(inNetCDF_File))
-        exit()
+        sys.exit("Input netcdf file ({0}) was not found.".format(inNetCDF_File))
 
     #check if the output netcdf file directoryt exists
     filePath = os.path.dirname(outNetCDF_File)
     if(os.path.isdir(filePath) == False):
-        raise Exception("Netcdf output directory ({0}) was not found.".format(filePath))
-        exit()
+        sys.exit("Netcdf output directory ({0}) was not found.".format(filePath))
 
     # validate input time step value
     if(inTimeStep != 1 and inTimeStep != 2 and inTimeStep != 3 and inTimeStep != 4 and inTimeStep != 6):
         errMsg = "Provided time step value ("  + inTimeStep +  ") is not a valid time step value.\n"
         errMsg += "Valid values are: 1, 2, 3, 4, and 6."
-        raise Exception(errMsg)
-        exit()
+        sys.exit(errMsg)
 
     #open the netCDF file in readonly mode based on which we will be creating a new netcdf file
     inRootGrp = Dataset(inNetCDF_File, 'r', format='NETCDF3_CLASSIC')
@@ -123,7 +120,7 @@ try:
     outRootGrp.createDimension('x', outXvarDimensionSize)
     outRootGrp.createDimension('y', outYvarDimensionSize)
 
-    # print each dimension name, dimension length
+    #DEBUG: print each dimension name, dimension length
     for dimName, dimObj in outRootGrp.dimensions.iteritems():
         print dimName, len(dimObj)
 
@@ -135,6 +132,7 @@ try:
     vX = outRootGrp.createVariable('x', 'f4', ('x'))            #f4: 32-bit floating point data type
     vY = outRootGrp.createVariable('y', 'f4', ('y'))
 
+    #DEBUG: print names of all variables defined for the output netcdf file
     for varKVP in outRootGrp.variables.iteritems():
         print varKVP[0]
 
@@ -199,19 +197,19 @@ try:
     elapsed_time = end_time - start_time
     print('Time taken for the script to finish: ' + str(elapsed_time) + ' seconds')
 
-    # close netcdf files
-    outRootGrp.close()
-    inRootGrp.close()
     print('>>>done...')
 
 except:
-    if(outRootGrp != None):
-        outRootGrp.close()
-    if(inRootGrp != None):
-        inRootGrp.close()
     tb = sys.exc_info()[2]
     tbinfo = traceback.format_tb(tb)[0]
     pyErrMsg = "PYTHON ERRORS:\nTraceback Info:\n" + tbinfo + "\nError Info:\n    " + str(sys.exc_type)+ ": " + str(sys.exc_value) + "\n"
     print(pyErrMsg)
     print('>>>done...with exception')
     raise Exception(pyErrMsg)
+
+finally:
+    # close netcdf files
+    if(outRootGrp != None):
+        outRootGrp.close()
+    if(inRootGrp != None):
+        inRootGrp.close()
