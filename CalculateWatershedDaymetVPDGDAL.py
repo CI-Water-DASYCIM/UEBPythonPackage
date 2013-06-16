@@ -28,6 +28,10 @@ if __name__ == '__main__':
     main()
 
 # Import modules
+# set desktop license used to ArcView
+# ref: http://help.arcgis.com/en/arcgisdesktop/10.0/help/index.html#//002z0000000z000000
+import arcview
+
 import arcpy
 import os
 import sys
@@ -51,6 +55,8 @@ outRasterFilePath = None
 clippedWSDEMRasterFile = None
 inVpDataFileNames = None
 gp = None
+inSimulationStartDate = None
+inSimulationEndDate = None
 
 # find the dir path of this python script location
 thisScriptPath = os.path.dirname(sys.argv[0])
@@ -59,17 +65,16 @@ thisScriptPath = os.path.dirname(sys.argv[0])
 sys.path.append(thisScriptPath)
 
 # check if the script file to read the number of days to simulate exists
-scriptFileToReadNumberOfDaysToSimulate = os.path.join(thisScriptPath,'DaymetNumberOfDaysToProcess.py')
-if(os.path.isfile(scriptFileToReadNumberOfDaysToSimulate) == False):
-    raise Exception("Script file ({0}) was not found.".format(scriptFileToReadNumberOfDaysToSimulate))
-    exit()
+##scriptFileToReadNumberOfDaysToSimulate = os.path.join(thisScriptPath,'DaymetNumberOfDaysToProcess.py')
+##if(os.path.isfile(scriptFileToReadNumberOfDaysToSimulate) == False):
+##    raise Exception("Script file ({0}) was not found.".format(scriptFileToReadNumberOfDaysToSimulate))
+##    exit()
 
 
-import DaymetNumberOfDaysToProcess
+##import DaymetNumberOfDaysToProcess
 
-# settings for runnning this code locally not part of the workflow. To run this code on remote app server as part of the workflow
-# comment out the following 10 lines
-# to run locally not part of a workflow, uncomment the following 10 lines
+# settings for runnning this script locally not part of the workflow.
+# to run this code locally NOT as part of the workflow uncomment the following 12 lines
 ##thisScriptFullFilePath = os.path.join(thisScriptPath,'CalculateWatershedDaymetVPGDAL.py')
 ##argumentList = []
 ##argumentList.append(thisScriptFullFilePath) #this argument is reserved for the name of this script file
@@ -79,12 +84,14 @@ import DaymetNumberOfDaysToProcess
 ##argumentList.append(r'E:\CIWaterData\DaymetTimeSeriesData\Logan\vpdatasets\Raster')
 ##argumentList.append(r"E:\CIWaterData\Temp\ws_dem.tif")
 ##argumentList.append('vp1.nc;vp2.nc')
+##argumentList.append('2011/01/01') # simulation start date
+##argumentList.append('2011/01/05') # simulation end date
 ##sys.argv = argumentList
 
 
 # the first argument sys.argv[0] is the name of this script file
-# excluding the name of the script file we need 6 more argument, so total of 7
-if (len(sys.argv) < 7):
+# excluding the name of the script file we need 9 more argument, so total of 9
+if (len(sys.argv) < 9):
     print('Invalid arguments:')
     print('1st argument: Input vp netcdf file path')
     print('2nd argument: Output vp netcdf file path')
@@ -92,7 +99,9 @@ if (len(sys.argv) < 7):
     print('4th argument: Output vp temporary raster file path')
     print('5th argument: Input watershed DEM raster file name with file path')
     print('6th argument: List of input vp netcdf file names')
-    raise Exception("There has to be 6 arguments to calculate Dayment vapor pressure at each grid of the watershed.")
+    print('7th argument: Simulation start date')
+    print('8th argument: Simulation end date')
+    raise Exception("There has to be 8 arguments to calculate Dayment vapor pressure at each grid of the watershed.")
     exit()
 
 # retrieve passed argument values
@@ -102,6 +111,8 @@ outNetCDFFileName = sys.argv[3]
 outRasterFilePath = sys.argv[4]
 clippedWSDEMRasterFile = sys.argv[5]
 inVpDataFileNames = sys.argv[6]
+inSimulationStartDate = sys.argv[7]
+inSimulationEndDate = sys.argv[8]
 
 # array to store all input Daymet netcdf file names
 vpNetCDFFilesArray = []
@@ -109,6 +120,18 @@ vpNetCDFFilesArray = inVpDataFileNames.split(';')
 
 if(len(vpNetCDFFilesArray) == 0):
     raise Exception("Netcdf input Daymet data file names are missing.")
+    exit()
+
+# validate the start and end simulation dates by converting to date types
+try:
+    startDate = datetime.datetime.strptime(inSimulationStartDate, '%Y/%m/%d')
+    endDate = datetime.datetime.strptime(inSimulationEndDate, '%Y/%m/%d')
+except ValueError as ex:
+    raise Exception(str(ex))
+    exit()
+
+if(startDate >= endDate):
+    raise Exception("Simulation end date must be date after the simulation start date")
     exit()
 
 # array to store raster layers created from each of the input netcdf prep data file
@@ -251,6 +274,14 @@ try:
         raise Exception("Data year was not found in the specified Daymet input data files.")
         exit()
 
+    if (dataYear != startDate.year):
+        raise Exception("Specified simulation start year ({0}) does not match with Daymet data year.".format(startDate.year))
+        exit()
+
+    if (dataYear != endDate.year):
+        raise Exception("Specified simulation end year ({0}) does not match with Daymet data year.".format(endDate.year))
+        exit()
+
     # grab the start time
     start_time = time.clock()
 
@@ -297,9 +328,9 @@ try:
     # snap raster is neeed for projection of the data raster file to the watershed projection
     gp.SnapRaster = clippedWSDEMRasterFile
 
-    startDay = 1
-    startMonth = 1
-    startDate = datetime.date(dataYear, startMonth, startDay)
+##    startDay = 1
+##    startMonth = 1
+##    startDate = datetime.date(dataYear, startMonth, startDay)
     timeValueFormat = "%m/%d/%Y %H:%M:%S %p"
     rasterFileNameDateFormat = "%Y_%m_%d"
     valueSelectionMethod = "BY_VALUE"
@@ -316,9 +347,10 @@ try:
 
     # select data for each time band from each of the in memory raster layers and then
     # mosiac the raster layer to save to disk for a given day
-    daysInYear = DaymetNumberOfDaysToProcess.getNumberOfDays();
-
-    for day in range(0, daysInYear):
+    # get the number of days to simulate from simulation start and end dates
+    #daysInYear = DaymetNumberOfDaysToProcess.getNumberOfDays();
+    numberOfSimulationDays = (endDate - startDate).days + 1
+    for day in range(0, numberOfSimulationDays):
         newDay = startDate + datetime.timedelta(days= day)
         outRasterFileName = 'vp' + newDay.strftime(rasterFileNameDateFormat) + '.tif'
         outProjRasterFileName = 'wsProjVp' + newDay.strftime(rasterFileNameDateFormat) + '.tif'

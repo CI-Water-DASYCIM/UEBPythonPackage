@@ -22,7 +22,10 @@ if __name__ == '__main__':
     main()
 
 
-# Import arcpy module
+# set desktop license used to ArcView
+# ref: http://help.arcgis.com/en/arcgisdesktop/10.0/help/index.html#//002z0000000z000000
+import arcview
+
 import arcpy
 import numpy
 import os
@@ -49,10 +52,10 @@ netCDFYCAGEValueFileName = None
 ##argumentList = []
 ##argumentList.append('') #this argument is reserved for the name of this script file
 ##argumentList.append(r'E:\CIWaterData\Temp\ws_nlcd.img')
-##argumentList.append('ws_cc_nlcd_.nc')
-##argumentList.append('ws_hc_nlcd_.nc')
-##argumentList.append('ws_lai_nlcd_.nc')
-##argumentList.append('ws_ycage_nlcd_.nc')
+##argumentList.append('ws_cc_nlcd.nc')
+##argumentList.append('ws_hc_nlcd.nc')
+##argumentList.append('ws_lai_nlcd.nc')
+##argumentList.append('ws_ycage_nlcd.nc')
 ##sys.argv = argumentList
 
 # the first argument sys.argv[0] is the name of this script file
@@ -293,6 +296,11 @@ try:
     for rowNum in xrange(rasRows):                     # Loop through the rows
         for colNum in xrange(rasCols):                 # Loop through the row's columns
             classificationCode = rstArray.item(rowNum, colNum)
+            print(classificationCode)
+
+            if(classificationCode == -128): # no data value
+                classificationCode = 31
+
             ccValue = landClassificationCCValueLookup[str(classificationCode)]
             hcanValue = landClassificationHCANValueLookup[str(classificationCode)]
             laiValue = landClassificationLAIValueLookup[str(classificationCode)]

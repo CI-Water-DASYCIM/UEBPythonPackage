@@ -44,10 +44,10 @@ inTimeStep = None
 inRootGrpTmin = None
 inRootGrpTmax = None
 outRootGrp = None
+inSimulationStartDate = None
 
-# settings for runnning this code locally not part of the workflow. To run this code on remote app server as part of the workflow
-# comment out the following 11 lines
-# to run locally not part of a workflow, uncomment the following 11 lines
+# settings for runnning this script locally not part of the workflow.
+# to run this code locally NOT as part of the workflow uncomment the following 12 lines
 ##argumentList = []
 ##argumentList.append('') #this argument is reserved for the name of this script file
 ##argumentList.append(r'E:\CIWaterData\DaymetTimeSeriesData\Logan\tempdatasets\OutNetCDF')
@@ -58,11 +58,12 @@ outRootGrp = None
 ##argumentList.append('ta_daily_multiple_data.nc')
 ##argumentList.append('T')
 ##argumentList.append(6)
+##argumentList.append('2011/01/01') # simulation start date
 ##sys.argv = argumentList
 
 # the first argument sys.argv[0] is the name of this script file
-# excluding the name of the script file we need 8 more argument, so total of 9
-if (len(sys.argv) < 9):
+# excluding the name of the script file we need 9 more argument, so total of 10
+if (len(sys.argv) < 10):
     print('Invalid arguments:')
     print('1st argument: Source directory path for watershed specific daymet temperature netcdf files')
     print('2nd argument: Temporary directory path for output netcdf file')
@@ -72,7 +73,8 @@ if (len(sys.argv) < 9):
     print('6th argument: Name of of the output netcdf file' )
     print('7th argument: Name of the temperature data variable for the output netcdf file')
     print('8th argument: Time step value (in hours) allowed values area: 1, 2, 3, 4,, 6')
-    raise Exception("There has to be 8 arguments to calculate multiple temperature data point per day.")
+    print('9th argument: Simulation start date')
+    raise Exception("There has to be 9 arguments to calculate multiple temperature data point per day.")
     exit()
 
 
@@ -85,6 +87,7 @@ inTmaxNetCDF_FileName = sys.argv[5]
 outNetCDF_FileName = sys.argv[6]
 outDataVariableName = sys.argv[7]
 inTimeStep = int(sys.argv[8])
+inSimulationStartDate = sys.argv[9]
 
 # param: hour - hour in 24-hour cycle at which the factor is needed
 # param: interval - time interval at which factor is calculated
@@ -101,6 +104,13 @@ def getTminFactor(hour, interval):
         tMinFactor = 1 + tMinFactor
 
     return tMinFactor
+
+# validate the simulation start date by converting to date type
+try:
+    startDate = datetime.datetime.strptime(inSimulationStartDate, '%Y/%m/%d')
+except ValueError as ex:
+    raise Exception(str(ex))
+    exit()
 
 try:
     # check the netcdf temporary output directory exists
@@ -133,6 +143,16 @@ try:
 
     # open the netCDF file that has maximum daily temp data. Open in readonly mode based on which we will be creating a new netcdf file
     inRootGrpTmax = Dataset(inTmaxNetCDF_File, 'r', format='NETCDF3_CLASSIC')
+
+    # check that both input temp data files have the same data year
+    if (inRootGrpTmin.start_year != inRootGrpTmax.start_year):
+        raise Exception("Specified temp data files seem to have different data years.")
+        exit()
+
+    # check that the simulation start year is same as the data year of one of the input temp data files
+    if (inRootGrpTmin.start_year != startDate.year):
+        raise Exception("Specified simulation start year ({0}) does not match with input temp data files data year.".format(startDate.year))
+        exit()
 
     inputTminVar = inRootGrpTmin.variables['tmin']
     inputTmaxVar = inRootGrpTmax.variables['tmax']
@@ -209,11 +229,12 @@ try:
     vY[:] = inputYminVar[:]
 
     # assign time data to time variable
-    dataYear = outRootGrp.start_year
-    startDate = datetime.date(dataYear, 1, 1)
+    #dataYear = outRootGrp.start_year
+    #startDate = datetime.date(dataYear, 1, 1)
 
-    #generate 6 hourly date time values starting with 1st January of the dataYear
-    dates =[datetime.datetime(dataYear,1,1,0,0,0) + n*datetime.timedelta(hours=inTimeStep) for n in range(vTime.shape[0])]
+    #generate input time step based date time values starting with the simulation start date
+    #dates =[datetime.datetime(dataYear,1,1,0,0,0) + n*datetime.timedelta(hours=inTimeStep) for n in range(vTime.shape[0])]
+    dates =[datetime.datetime(startDate.year, startDate.month, startDate.day, 0, 0, 0) + n*datetime.timedelta(hours=inTimeStep) for n in range(vTime.shape[0])]
     vTime[:] = date2num(dates, units=vTime.units, calendar=vTime.calendar)
 
     times, cols, rows = inputTminVar.shape

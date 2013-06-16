@@ -20,7 +20,10 @@ def main():
 if __name__ == '__main__':
     main()
 
-# Import arcpy module
+# set desktop license used to ArcView
+# ref: http://help.arcgis.com/en/arcgisdesktop/10.0/help/index.html#//002z0000000z000000
+import arcview
+
 import arcpy
 import arcgisscripting
 import os
@@ -33,9 +36,11 @@ arcpy.CheckOutExtension("spatial")
 
 # Local variables:
 ProjectedNLCDDataSetFile = None
-ExtractedNLCDDataSetFileName = 'extracted_nlcd.img'
+ExtractedNLCDDataSetFileName = 'extracted_nlcd.img' # temporary file name
 ExtractedNLCDDataSetFile = None
 outWSNLCDFileName = None
+ReClippedOutWSNLCDFileName = 'temp_nlcd.img' # temporary file name
+ReClippedOutWSNLCDFile = None
 WSDEMRasterFile = None
 outWSNLCDFile = None
 gp = None
@@ -46,7 +51,7 @@ gp = None
 ##argumentList = []
 ##argumentList.append('') #this argument is reserved for the name of this script file
 ##argumentList.append(r'E:\CIWaterData\NLCDDataSetUSA\ProjNLCD2006_LC_N36W096_v1.img')
-##argumentList.append('E:\CIWaterData\Temp\ws_dem.tif')
+##argumentList.append(r'E:\Scratch\TestwatershedDEMRasterFileRowsCols\ws_dem.tif') # r'E:\CIWaterData\Temp\ws_dem.tif'
 ##argumentList.append('ws_nlcd.img')
 ##sys.argv = argumentList
 
@@ -79,6 +84,7 @@ else:
     filePath = os.path.dirname(WSDEMRasterFile)
     outWSNLCDFile = os.path.join(filePath, outWSNLCDFileName)
     ExtractedNLCDDataSetFile = os.path.join(filePath, ExtractedNLCDDataSetFileName)
+    ReClippedOutWSNLCDFile = os.path.join(filePath, ReClippedOutWSNLCDFileName)
 
 try:
 
@@ -120,6 +126,14 @@ try:
 
     # ref:http://webhelp.esri.com/arcgisdesktop/9.3/index.cfm?TopicName=Clip_(Data_Management)
     gp.clip_management(ExtractedNLCDDataSetFile, wsBoundingBox, outWSNLCDFile, clipping_geometry ="NONE")
+
+    # do another clipping to get the number of rows and columns right for the nlcd image file
+    gp.clip_management(outWSNLCDFile, wsBoundingBox, ReClippedOutWSNLCDFile, clipping_geometry ="NONE")
+
+    # delete the first time clipped file nlcd image file
+    os.unlink(outWSNLCDFile)
+    # rename the 2nd time clipped nlcd image file to the name of the 1st clipped nlcd image file
+    os.rename(ReClippedOutWSNLCDFile, outWSNLCDFile)
     print('>>>done..')
 
 except:

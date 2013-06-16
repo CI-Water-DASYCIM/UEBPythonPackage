@@ -18,7 +18,10 @@ def main():
 if __name__ == '__main__':
     main()
 
-# Import arcpy module
+# set desktop license used to ArcView
+# ref: http://help.arcgis.com/en/arcgisdesktop/10.0/help/index.html#//002z0000000z000000
+import arcview
+
 import arcpy
 import arcgisscripting
 import sys
@@ -35,6 +38,7 @@ ExtractedWSDEMFileName = "ExtractedWSDEM.tif" # temporary file
 ClippedWSDEMRasterFileName = None
 BufferedWSRasterFile = None
 ResampledWSDEMFileName = "ws_resample_dem.tif" # temporary file
+ReClippedWSDEMRasterFileName = 're_clipped_ws_dem.tif' # temporary file
 gp = None
 
 # settings for runnning this code locally not part of the workflow. To run this code on remote app server as part of the workflow
@@ -43,7 +47,7 @@ gp = None
 ##argumentList = []
 ##argumentList.append('') #this argument is reserved for the name of this script file
 ##argumentList.append(r'E:\CIWaterData\DEM\gsl100.tif')
-##argumentList.append(r'E:\CIWaterData\Temp\ws_buffered.tif')
+##argumentList.append(r'E:\Scratch\TestwatershedDEMRasterFileRowsCols\watershed_buffered.tif') # r'E:\CIWaterData\Temp\watershed_buffered.tif'
 ##argumentList.append('ws_dem.tif')
 ##sys.argv = argumentList
 
@@ -84,6 +88,7 @@ if(os.path.isfile(BufferedWSRasterFile) == True):
 
     # set the path for the temporary clipped ws DEM file
     ClippedWSDEMRasterFile = os.path.join(filePath, ClippedWSDEMRasterFileName)
+    ReClippedWSDEMRasterFile = os.path.join(filePath, ReClippedWSDEMRasterFileName)
     ResampledWSDEMFile = os.path.join(filePath, ResampledWSDEMFileName)
 else:
     print('Exception')
@@ -122,6 +127,14 @@ try:
 
     # ref:http://webhelp.esri.com/arcgisdesktop/9.3/index.cfm?TopicName=Clip_(Data_Management)
     gp.clip_management(ExtractedWSDEMFile, wsBoundingBox, ClippedWSDEMRasterFile, clipping_geometry ="NONE")
+
+    # do another clipping to get the number of rows and columns right for the watershed dem raster file
+    gp.clip_management(ClippedWSDEMRasterFile, wsBoundingBox, ReClippedWSDEMRasterFile, clipping_geometry ="NONE")
+
+    # delete the first time clipped file
+    os.unlink(ClippedWSDEMRasterFile)
+    # rename the 2nd time clipped raster file to the name of the 1st clipped raster dem file
+    os.rename(ReClippedWSDEMRasterFile, ClippedWSDEMRasterFile)
 
     # Process: Resample if cell size has been provided
     # Resampling is necessary if we give the option for the user to provide a different

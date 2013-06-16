@@ -42,9 +42,8 @@ outRootGrp = None
 inRootGrpTa = None
 inRootGrpVp = None
 
-# settings for runnning this code locally not part of the workflow. To run this code on remote app server as part of the workflow
-# comment out the following 9 lines
-# to run locally not part of a workflow, uncomment the following 9 lines
+# settings for runnning this script locally not part of the workflow.
+# to run this code locally NOT as part of the workflow uncomment the following 9 lines
 ##argumentList = []
 ##argumentList.append('') #this argument is reserved for the name of this script file
 ##argumentList.append(r'E:\CIWaterData\Temp\ta_daily_multiple_data.nc')

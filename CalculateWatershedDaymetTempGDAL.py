@@ -29,6 +29,10 @@ if __name__ == '__main__':
 
 
 # Import modules
+# set desktop license used to ArcView
+# ref: http://help.arcgis.com/en/arcgisdesktop/10.0/help/index.html#//002z0000000z000000
+import arcview
+
 import arcpy
 import os
 import sys
@@ -60,17 +64,16 @@ thisScriptPath = os.path.dirname(sys.argv[0])
 sys.path.append(thisScriptPath)
 
 # check if the script file to read the number of days to simulate exists
-scriptFileToReadNumberOfDaysToSimulate = os.path.join(thisScriptPath,'DaymetNumberOfDaysToProcess.py')
-if(os.path.isfile(scriptFileToReadNumberOfDaysToSimulate) == False):
-    raise Exception("Script file ({0}) was not found.".format(scriptFileToReadNumberOfDaysToSimulate))
-    exit()
+##scriptFileToReadNumberOfDaysToSimulate = os.path.join(thisScriptPath,'DaymetNumberOfDaysToProcess.py')
+##if(os.path.isfile(scriptFileToReadNumberOfDaysToSimulate) == False):
+##    raise Exception("Script file ({0}) was not found.".format(scriptFileToReadNumberOfDaysToSimulate))
+##    exit()
 
 
-import DaymetNumberOfDaysToProcess
+##import DaymetNumberOfDaysToProcess
 
-# settings for runnning this code locally not part of the workflow. To run this code on remote app server as part of the workflow
-# comment out the following 11 lines
-# to run locally not part of a workflow, uncomment the following 11 lines
+# settings for runnning this script locally not part of the workflow.
+# to run this code locally NOT as part of the workflow uncomment the following 13 lines
 ##thisScriptFullFilePath = os.path.join(thisScriptPath,'CalculateWatershedDayemtTempGDAL.py')
 ##argumentList = []
 ##argumentList.append(thisScriptFullFilePath) #this argument is reserved for the name of this script file
@@ -81,11 +84,13 @@ import DaymetNumberOfDaysToProcess
 ##argumentList.append(r"E:\CIWaterData\Temp\ws_dem.tif")
 ##argumentList.append('tmin1.nc;tmin2.nc')
 ##argumentList.append('tmin')
+##argumentList.append('2011/01/01') # simulation start date
+##argumentList.append('2011/01/05') # simulation end date
 ##sys.argv = argumentList
 
 # the first argument sys.argv[0] is the name of this script file
-# excluding the name of the script file we need 7 more arguments, so total of 8
-if (len(sys.argv) < 8):
+# excluding the name of the script file we need 9 more arguments, so total of 10
+if (len(sys.argv) < 10):
     print('Invalid arguments:')
     print('1st argument: Source Daymet files directory path')
     print('2nd argument: Directory path for output netcdf file')
@@ -94,7 +99,9 @@ if (len(sys.argv) < 8):
     print('5th argument: Input watershed DEM raster file name with path')
     print('6th argument: Name of each of the Daymet source datafile separated by semicolon' )
     print('7th argument: Name of the data variable for the output netCDF file')
-    raise Exception("There has to be 7 arguments to calculate Dayment temp at each grid of the watershed.")
+    print('8th argument: Simulation start date')
+    print('9th argument: Simulation end date')
+    raise Exception("There has to be 9 arguments to calculate Dayment temp at each grid of the watershed.")
     exit()
 
 
@@ -106,6 +113,8 @@ outRasterFilePath = sys.argv[4]
 clippedWSDEMRasterFile = sys.argv[5]
 inTaDataFileNames = sys.argv[6]
 dataSetVariableName = sys.argv[7]
+inSimulationStartDate = sys.argv[8]
+inSimulationEndDate = sys.argv[9]
 
 # array to store all input Daymet netcdf file names
 TaNetCDFFilesArray = []
@@ -115,6 +124,17 @@ if(len(TaNetCDFFilesArray) == 0):
     raise Exception("Netcdf input Dayment data file names are missing.")
     exit()
 
+# validate the start and end simulation dates by converting to date types
+try:
+    startDate = datetime.datetime.strptime(inSimulationStartDate, '%Y/%m/%d')
+    endDate = datetime.datetime.strptime(inSimulationEndDate, '%Y/%m/%d')
+except ValueError as ex:
+    raise Exception(str(ex))
+    exit()
+
+if(startDate >= endDate):
+    raise Exception("Simulation end date must be date after the simulation start date")
+    exit()
 
 # array to store raster layers created from each of the input netcdf temp data files
 inMemoryRasterLayersArray = []
@@ -262,6 +282,14 @@ try:
         raise Exception("Data year was not found in the specified Daymet input data files.")
         exit()
 
+    if (dataYear != startDate.year):
+        raise Exception("Specified simulation start year ({0}) does not match with Daymet data year.".format(startDate.year))
+        exit()
+
+    if (dataYear != endDate.year):
+        raise Exception("Specified simulation end year ({0}) does not match with Daymet data year.".format(endDate.year))
+        exit()
+
     # grab the start time
     start_time = time.clock()
 
@@ -307,7 +335,7 @@ try:
     # snap raster is neeed for projection of the data raster file to the watershed projection
     gp.SnapRaster = clippedWSDEMRasterFile
 
-    startDate = datetime.date(dataYear, 1, 1)
+    #startDate = datetime.date(dataYear, 1, 1)
     timeValueFormat = "%m/%d/%Y %H:%M:%S %p"
     rasterFileNameDateFormat = "%Y_%m_%d"
     valueSelectionMethod = "BY_VALUE"
@@ -322,12 +350,13 @@ try:
 
     print('>>>raster start time:' + str(datetime.datetime.now()))
 
-    # get the number of days to simulate
-    daysInYear = DaymetNumberOfDaysToProcess.getNumberOfDays();
+    # get the number of days to simulate from simulation start and end dates
+    #daysInYear = DaymetNumberOfDaysToProcess.getNumberOfDays();
+    numberOfSimulationDays = (endDate - startDate).days + 1
 
     # select data for each time band from each of the in memory raster layers and then
     # mosiac the raster layer to save to disk for a given day
-    for day in range(0, daysInYear):
+    for day in range(0, numberOfSimulationDays):
         newDay = startDate + datetime.timedelta(days= day)
         outRasterFileName = dataSetVariableName + newDay.strftime(rasterFileNameDateFormat) + '.tif'
         outProjRasterFileName = 'wsProj' + dataSetVariableName + newDay.strftime(rasterFileNameDateFormat) + '.tif'
@@ -344,7 +373,7 @@ try:
         # mosaic all the raster layers for the current time selection
         # ref: http://webhelp.esri.com/arcgisdesktop/9.2/index.cfm?TopicName=mosaic_to_new_raster_(data_management)
         numberOfBands = '1'
-        coordinate_system_for_the_output_raster = '' # this setting will use the cordinate system for the input rasters for the output raster
+        coordinate_system_for_the_output_raster = '' # this setting will use the cordinate system of the input rasters for the output raster
         pixel_type_of_output_raster = '32_BIT_FLOAT'
         cell_size_of_output_raster = '' # this setting will use the cell size of the input rasters for the ouput raster
         mosiac_method = 'MEAN' # the output cell value of the overlapping areas will be the mean of the overlapped cells

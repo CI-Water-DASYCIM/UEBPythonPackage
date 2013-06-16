@@ -11,6 +11,10 @@
 
 # ref: http://webhelp.esri.com/arcgisdesktop/9.2/index.cfm?id=1663&pid=1644&topicname=Get%20Raster%20Properties%20(Data%20Management)&
 
+# set desktop license used to ArcView
+# ref: http://help.arcgis.com/en/arcgisdesktop/10.0/help/index.html#//002z0000000z000000
+import arcview
+
 import arcgisscripting
 import sys
 import os

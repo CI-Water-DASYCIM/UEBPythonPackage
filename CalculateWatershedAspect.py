@@ -17,6 +17,10 @@ def main():
 if __name__ == '__main__':
     main()
 
+# set desktop license used to ArcView
+# ref: http://help.arcgis.com/en/arcgisdesktop/10.0/help/index.html#//002z0000000z000000
+import arcview
+
 import arcgisscripting
 import os
 import sys

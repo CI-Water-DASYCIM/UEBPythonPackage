@@ -35,31 +35,41 @@ outNetCDF_File = None
 inTimeStep = None
 outRootGrp = None
 inRootGrp = None
+inSimulationStartDate = None
 
-# settings for runnning this code locally not part of the workflow. To run this code on remote app server as part of the workflow
-# comment out the following 6 lines
-# to run locally not part of a workflow, uncomment the following 6 lines
+# settings for runnning this script locally not part of the workflow.
+# to run this code locally NOT as part of the workflow uncomment the following 7 lines
 ##argumentList = []
 ##argumentList.append('') #this argument is reserved for the name of this script file
 ##argumentList.append(r'E:\CIWaterData\DaymetTimeSeriesData\Logan\vpdatasets\OutNetCDF\vp_daily_one_data.nc')
 ##argumentList.append(r'E:\CIWaterData\DaymetTimeSeriesData\Logan\vpdatasets\OutNetCDF\vp_daily_multiple_data.nc')
 ##argumentList.append(6)
+##argumentList.append('2011/01/01') # simulation start date
 ##sys.argv = argumentList
 
 # the first argument sys.argv[0] is the name of this script file
-# excluding the name of the script file we need 3 more argument, so total of 4
-if (len(sys.argv) < 4):
+# excluding the name of the script file we need 4 more argument, so total of 5
+if (len(sys.argv) < 5):
     print('Invalid arguments:')
     print('1st argument: Input watershed specific daymet vapor pressure netcdf file name with directory path')
     print('2nd argument: Output watershed specific daymet vapor pressure netcdf file name with directory path')
     print('3rd argument: Time step value (in hours) allowed values area: 1, 2, 3, 4,, 6')
-    raise Exception("There has to be 3 arguments to calculate multiple vapor pressure data points per day.")
+    print('4th argument: Simulation start date')
+    raise Exception("There has to be 4 arguments to calculate multiple vapor pressure data points per day.")
     exit()
 
 # retrieve passed arguments
 inNetCDF_File = sys.argv[1]
 outNetCDF_File = sys.argv[2]
 inTimeStep = int(sys.argv[3])
+inSimulationStartDate = sys.argv[4]
+
+# validate the simulation start date by converting to date type
+try:
+    startDate = datetime.datetime.strptime(inSimulationStartDate, '%Y/%m/%d')
+except ValueError as ex:
+    raise Exception(str(ex))
+    exit()
 
 try:
 
@@ -83,6 +93,10 @@ try:
 
     #open a new blank netcdf file to which we will be writting data
     outRootGrp = Dataset(outNetCDF_File, 'w', format='NETCDF3_CLASSIC')
+
+    if (inRootGrp.start_year != startDate.year):
+        raise Exception("Specified simulation start year ({0}) does not match with input vapor pressure data file data year.".format(startDate.year))
+        exit()
 
      # DEBUG: print global attributes of the original file:
 ##    for gAttribute in inRootGrp.ncattrs():
@@ -167,9 +181,12 @@ try:
     vY[:] = inputYvar[:]
 
     # assign time data to time variable
-    dataYear = outRootGrp.start_year
-    startDate = datetime.date(dataYear, 1, 1)
-    dates =[datetime.datetime(dataYear,1,1,0,0,0) + n*datetime.timedelta(hours=inTimeStep) for n in range(vTime.shape[0])]
+    #dataYear = outRootGrp.start_year
+    #startDate = datetime.date(dataYear, 1, 1)
+    #dates =[datetime.datetime(dataYear,1,1,0,0,0) + n*datetime.timedelta(hours=inTimeStep) for n in range(vTime.shape[0])]
+
+    #generate input time step based date time values starting with the simulation start date
+    dates =[datetime.datetime(startDate.year, startDate.month, startDate.day, 0, 0, 0) + n*datetime.timedelta(hours=inTimeStep) for n in range(vTime.shape[0])]
     vTime[:] = date2num(dates, units=vTime.units, calendar=vTime.calendar)
 
     times, cols, rows = inputVpVar.shape
