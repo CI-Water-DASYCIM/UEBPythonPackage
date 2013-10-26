@@ -67,6 +67,7 @@ if (len(sys.argv) < 7):
     raise Exception("There has to be 6 arguments to calculate multiple RH data points per day.")
     exit()
 
+
 # retrieve the passed arguments
 sourceTaNetCDFile = sys.argv[1]
 sourceVpdNetCDFFile = sys.argv[2]

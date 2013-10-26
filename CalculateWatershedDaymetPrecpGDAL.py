@@ -58,7 +58,7 @@ inSimulationStartDate = None
 inSimulationEndDate = None
 
 
-# find the dir path of this python script location
+# find the dir path of this python script file location
 thisScriptPath = os.path.dirname(sys.argv[0])
 
 # append the found path to the python search path
@@ -249,6 +249,7 @@ try:
         if(os.path.isfile(netcdfFile) == False):
             raise Exception("Input netcdf file ({0}) was not found.".format(netcdfFile))
             exit()
+        # TODO: also check that each file has an extension of .nc
 
     if(os.path.isfile(clippedWSDEMRasterFile) == False):
         raise Exception("Input watershed DEM file ({0}) was not found.".format(clippedWSDEMRasterFile))

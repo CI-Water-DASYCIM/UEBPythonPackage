@@ -1,7 +1,7 @@
 #-------------------------------------------------------------------------------
-# Name:         WatershedFeaturesToNetCDFConversion.py
-# Purpose:      Generate a watershed netcdf file from a given watershed shape file
-#               as well genrates the buferred watershed shape file
+# Name:         CreateBufferedWatershedFiles.py
+# Purpose:      To generate a watershed netcdf file from a given watershed shape file
+#               as well generate the buffered watershed shape file
 #
 # Author:      Pabitra
 #
