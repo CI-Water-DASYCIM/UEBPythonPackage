@@ -31,26 +31,26 @@ bufferedWatershedShapeFile = None
 bufferedWatershedRasterFile = None
 bufferSize = None
 
-# settings for runnning this code locally not part of the workflow. To run this code on remote app server as part of the workflow
+# settings for running this code locally not part of the workflow. To run this code on remote app server as part of the workflow
 # comment out the following 8 lines
 # to run locally not part of a workflow, uncomment the following 8 lines
-##argumentList = []
-##argumentList.append('') #this argument is reserved for the name of this script file
-##argumentList.append(r'E:\CIWaterData\DEM\gsl100.tif')
-##argumentList.append(r'E:\CIWaterData\Temp\Watershed.shp')
-##argumentList.append(r'E:\CIWaterData\Temp\watershed_buffered.shp')
-##argumentList.append(r'E:\CIWaterData\Temp\watershed_buffered.tif')
-##argumentList.append('500') # watershed buffer size
-##sys.argv = argumentList
+# argumentList = []
+# argumentList.append('') #this argument is reserved for the name of this script file
+# argumentList.append(r'E:\CIWaterData\DEM\gsl100.tif')
+# argumentList.append(r'E:\CIWaterData\Temp\Watershed.shp')
+# argumentList.append(r'E:\CIWaterData\Temp\watershed_buffered.shp')
+# argumentList.append(r'E:\CIWaterData\Temp\watershed_buffered.tif')
+# argumentList.append('500') # watershed buffer size
+# sys.argv = argumentList
 
 # the first argument sys.argv[0] is the name of this script file
 # excluding the name of the script file we need 5 more arguments, so total of 6
-if (len(sys.argv) < 6):
+if len(sys.argv) < 6:
     print('Invalid arguments:')
-    print('1st argument: Input reference DEM raster file name with path.')
+    print('1st argument: Input reference DEM raster file name with path')
     print('2nd argument: Input watershed shape file name with path')
     print('3rd argument: Output watershed buffered shape file name with path')
-    print('4th argument: Output watershed buffered rasetr file name with path')
+    print('4th argument: Output watershed buffered raster file name with path')
     print('5th argument: Watershed buffer size (in meters)')
     raise Exception("There has to be 5 arguments to create buffered watershed shape and raster files.")
     exit()
@@ -63,25 +63,38 @@ bufferedWatershedRasterFile = sys.argv[4]
 bufferSize = sys.argv[5]
 
 # check if provided watershed shape file exists
-if(os.path.isfile(watershedOriginalShapeFile) == True):
-    # extract the filename from the path of the original shape file and prefix with 'projected'
-    # for the projected shape file name
-    projectedWatershedShapeFile = 'projected' + os.path.basename(watershedOriginalShapeFile)
-    filePath = os.path.dirname(watershedOriginalShapeFile)
-    projectedWatershedShapeFile = os.path.join(filePath, projectedWatershedShapeFile)
-else:
-    print('Exception')
-    raise Exception("Exception: Specified original watershed shape file ({0}) was not found.".format(watershedOriginalShapeFile))
-    exit()
+if not os.path.isfile(watershedOriginalShapeFile):
+    # Look for a file with .shp extension. If no .shp file can be found then raise exception.
+    shape_file_lookup_dir = os.path.dirname(watershedOriginalShapeFile)
+    # find the first file with extension '.shp' in the lookup_dir
+    shape_file_found = False
+    for _file in os.listdir(shape_file_lookup_dir):
+        if _file.endswith(".shp"):
+            watershedOriginalShapeFile = os.path.join(shape_file_lookup_dir, _file)
+            shape_file_found = True
+            break
 
-if(bufferSize.isdigit() == False):
+    if not shape_file_found:
+        print('Exception')
+        raise Exception("Exception: Specified original watershed shape file ({0}) was not "
+                        "found.".format(watershedOriginalShapeFile))
+        exit()
+
+# extract the filename from the path of the original shape file and prefix with 'projected'
+# for the projected shape file name
+projectedWatershedShapeFile = 'projected' + os.path.basename(watershedOriginalShapeFile)
+filePath = os.path.dirname(watershedOriginalShapeFile)
+projectedWatershedShapeFile = os.path.join(filePath, projectedWatershedShapeFile)
+
+if not bufferSize.isdigit():
     print('Exception')
-    raise Exception("Exception: Specified buffer size ({0}) is invalid. Buffere size needs to be a number.".format(bufferSize))
+    raise Exception("Exception: Specified buffer size ({0}) is invalid. Buffer size needs to be a "
+                    "number.".format(bufferSize))
     exit()
 
 try:
     # check if provided DEM file exists
-    if(os.path.isfile(referenceDEMFile) == False):
+    if not os.path.isfile(referenceDEMFile):
         sys.exit("Specified reference DEM file ({0}) was not found.".format(referenceDEMFile))
 
     # delete any pre-existing projected shape files and buffered shape files
@@ -103,7 +116,7 @@ try:
     demCS = ""
     demCS = DEMdesc.spatialReference.name
     demCS = demCS.replace("_", " ")
-    if(not demCS):
+    if not demCS:
         # set output coordinate system if DEM file does not have coordinate system
         outCS = arcpy.SpatialReference('NAD 1983 UTM Zone 12N')
     else:
@@ -117,9 +130,9 @@ try:
     print('projected watershed file created:' + projectedWatershedShapeFile)
 
     # run buffer tool
-    #bufferSize = 500
     bufferSize = str(bufferSize) + ' Meters'
-    arcpy.Buffer_analysis(projectedWatershedShapeFile, bufferedWatershedShapeFile, bufferSize, "FULL", "ROUND", "NONE", "")
+    arcpy.Buffer_analysis(projectedWatershedShapeFile, bufferedWatershedShapeFile,
+                          bufferSize, "FULL", "ROUND", "NONE", "")
     print('Buffered watershed shape file was created:' + bufferedWatershedShapeFile)
 
     # run Feature to Raster conversion
@@ -132,7 +145,8 @@ try:
 except:
     tb = sys.exc_info()[2]
     tbinfo = traceback.format_tb(tb)[0]
-    pyErrMsg = "PYTHON ERRORS:\nTraceback Info:\n" + tbinfo + "\nError Info:\n    " + str(sys.exc_type)+ ": " + str(sys.exc_value) + "\n"
+    pyErrMsg = "PYTHON ERRORS:\nTraceback Info:\n" + tbinfo + "\nError Info:\n    " + str(sys.exc_type)+ ": " + \
+               str(sys.exc_value) + "\n"
     print(pyErrMsg)
     print('>>>Done...with exception')
     raise Exception(pyErrMsg)
