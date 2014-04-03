@@ -160,6 +160,10 @@ try:
     inputYminVar = inRootGrpTmin.variables['y']
 
     # open a new blank netcdf file to which we will be writting data
+    # TODO: date:11/12/2013 change the format for writting to netcdf to
+    # NETCDF4_CLASSIC in order to be able to create a nc file size greater
+    # than 2 GB
+    # Ref: http://www.ncl.ucar.edu/Support/talk_archives/2011/0599.html
     outNetCDF_File = os.path.join(outNetCDFFilePath, outNetCDF_FileName)
     outRootGrp = Dataset(outNetCDF_File, 'w', format='NETCDF3_CLASSIC')
 

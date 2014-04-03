@@ -75,18 +75,18 @@ sys.path.append(thisScriptPath)
 
 # settings for runnning this script locally not part of the workflow.
 # to run this code locally NOT as part of the workflow uncomment the following 12 lines
-##thisScriptFullFilePath = os.path.join(thisScriptPath,'CalculateWatershedDaymetVPGDAL.py')
-##argumentList = []
-##argumentList.append(thisScriptFullFilePath) #this argument is reserved for the name of this script file
-##argumentList.append(r'E:\CIWaterData\DaymetTimeSeriesData\Logan\vpdatasets')
-##argumentList.append(r'E:\CIWaterData\DaymetTimeSeriesData\Logan\vpdatasets\OutNetCDF')
-##argumentList.append('vp_daily_one_data.nc')
-##argumentList.append(r'E:\CIWaterData\DaymetTimeSeriesData\Logan\vpdatasets\Raster')
-##argumentList.append(r"E:\CIWaterData\Temp\ws_dem.tif")
-##argumentList.append('vp1.nc;vp2.nc')
-##argumentList.append('2011/01/01') # simulation start date
-##argumentList.append('2011/01/05') # simulation end date
-##sys.argv = argumentList
+# thisScriptFullFilePath = os.path.join(thisScriptPath,'CalculateWatershedDaymetVPGDAL.py')
+# argumentList = []
+# argumentList.append(thisScriptFullFilePath) #this argument is reserved for the name of this script file
+# argumentList.append(r'E:\CIWaterData\DaymetTimeSeriesData\Logan\vpdatasets')
+# argumentList.append(r'E:\CIWaterData\DaymetTimeSeriesData\Logan\vpdatasets\OutNetCDF')
+# argumentList.append('vp_daily_one_data.nc')
+# argumentList.append(r'E:\CIWaterData\DaymetTimeSeriesData\Logan\vpdatasets\Raster')
+# argumentList.append(r"E:\CIWaterData\Temp\DEM\ws_dem.tif")
+# argumentList.append('vp1.nc;vp2.nc')
+# argumentList.append('2011/01/01') # simulation start date
+# argumentList.append('2011/12/31') # simulation end date
+# sys.argv = argumentList
 
 
 # the first argument sys.argv[0] is the name of this script file

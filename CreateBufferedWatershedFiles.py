@@ -2,10 +2,15 @@
 # Name:         CreateBufferedWatershedFiles.py
 # Purpose:      To generate a watershed netcdf file from a given watershed shape file
 #               as well generate the buffered watershed shape file
+#Note:          The input watershed shape file must need to have one of the following
+#               geographic coordinate systems:
+#               NAD_1927, NAD_1983, WGS_1984
+#               If the input DEM file has a geographic coordinate system then it must be 'NAD 1983'
 #
 # Author:      Pabitra
 #
 # Created:     21/02/2013
+# Updates:     4/3/2014
 # Copyright:   (c) Pabitra 2013
 # Licence:     <your licence>
 #-------------------------------------------------------------------------------
@@ -37,9 +42,9 @@ bufferSize = None
 # argumentList = []
 # argumentList.append('') #this argument is reserved for the name of this script file
 # argumentList.append(r'E:\CIWaterData\DEM\gsl100.tif')
-# argumentList.append(r'E:\CIWaterData\Temp\Watershed.shp')
-# argumentList.append(r'E:\CIWaterData\Temp\watershed_buffered.shp')
-# argumentList.append(r'E:\CIWaterData\Temp\watershed_buffered.tif')
+# argumentList.append(r'E:\CIWaterData\Temp\Logan_watershed\Watershed.shp')
+# argumentList.append(r'E:\CIWaterData\Temp\Logan_watershed\watershed_buffered.shp')
+# argumentList.append(r'E:\CIWaterData\Temp\Logan_watershed\watershed_buffered.tif')
 # argumentList.append('500') # watershed buffer size
 # sys.argv = argumentList
 
@@ -119,14 +124,39 @@ try:
     if not demCS:
         # set output coordinate system if DEM file does not have coordinate system
         outCS = arcpy.SpatialReference('NAD 1983 UTM Zone 12N')
+    elif not 'NAD 1983' in demCS:
+        raise Exception('Input DEM geographic coordinate system:%s is not supported.', demCS)
     else:
         outCS = arcpy.SpatialReference(demCS)
 
-    #set transformation method
-    transformMethod = 'WGS_1984_(ITRF00)_To_NAD_1983'
+    # get the spatial reference of the watershed
+    WSdesc = arcpy.Describe(watershedOriginalShapeFile)
+    wsCS = ""
+    wsCS = WSdesc.spatialReference.name
+    wsCS = wsCS.replace("_", " ")
+    print(wsCS)
+
+    # determine transform method to be used
+    transformMethod = ''
+    if 'WGS 1984' in wsCS:
+        transformMethod = 'WGS_1984_(ITRF00)_To_NAD_1983'
+    elif 'NAD 1927' in wsCS:
+        transformMethod = 'NAD_1927_To_NAD_1983_NADCON'
+    elif 'NAD 1983' in wsCS:
+        # here we assume the input watershed file has the same coordinate system datum as the DEM
+        # so no transform method needed
+        transformMethod = ''
+    elif wsCS == "Unknown":
+        raise Exception('Input watershed has unknown geographic coordinate system.')
+    else:
+        raise Exception('Input watershed geographic coordinate system:%s is not supported.', wsCS)
 
     # run the project tool
-    arcpy.Project_management(watershedOriginalShapeFile, projectedWatershedShapeFile, outCS, transformMethod)
+    if len(transformMethod) == 0:
+        arcpy.Project_management(watershedOriginalShapeFile, projectedWatershedShapeFile, outCS)
+    else:
+        arcpy.Project_management(watershedOriginalShapeFile, projectedWatershedShapeFile, outCS, transformMethod)
+
     print('projected watershed file created:' + projectedWatershedShapeFile)
 
     # run buffer tool
@@ -142,6 +172,9 @@ try:
 
     print('Done...')
 
+except arcpy.ExecuteError:
+    print('>>>Done...with exception')
+    raise Exception(arcpy.GetMessage(2))
 except:
     tb = sys.exc_info()[2]
     tbinfo = traceback.format_tb(tb)[0]

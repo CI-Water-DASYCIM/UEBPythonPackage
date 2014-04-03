@@ -86,6 +86,7 @@ netCDFHCANValueFile = None
 netCDFLAIValueFile = None
 netCDFYCAGEValueFile = None
 
+# ref: http://www.mrlc.gov/nlcd06_leg.php
 # create the land classification lookup dictionary for CC values
 # the 1st column (key) is the classification code values and the 2nd column
 # represents cc values
