@@ -10,7 +10,7 @@
 # Author:      Pabitra
 #
 # Created:     21/02/2013
-# Updates:     4/3/2014
+# Updates:     4/15/2014
 # Copyright:   (c) Pabitra 2013
 # Licence:     <your licence>
 #-------------------------------------------------------------------------------
@@ -42,9 +42,9 @@ bufferSize = None
 # argumentList = []
 # argumentList.append('') #this argument is reserved for the name of this script file
 # argumentList.append(r'E:\CIWaterData\DEM\gsl100.tif')
-# argumentList.append(r'E:\CIWaterData\Temp\Logan_watershed\Watershed.shp')
-# argumentList.append(r'E:\CIWaterData\Temp\Logan_watershed\watershed_buffered.shp')
-# argumentList.append(r'E:\CIWaterData\Temp\Logan_watershed\watershed_buffered.tif')
+# argumentList.append(r'E:\CIWaterData\Temp\watershed.shp')
+# argumentList.append(r'E:\CIWaterData\Temp\watershed_buffered.shp') # don't change this outfile name when testing
+# argumentList.append(r'E:\CIWaterData\Temp\watershed_buffered.tif') # don't change this outfile name when testing
 # argumentList.append('500') # watershed buffer size
 # sys.argv = argumentList
 
@@ -81,9 +81,8 @@ if not os.path.isfile(watershedOriginalShapeFile):
 
     if not shape_file_found:
         print('Exception')
-        raise Exception("Exception: Specified original watershed shape file ({0}) was not "
+        sys.exit("Exception: Specified original watershed shape file ({0}) was not "
                         "found.".format(watershedOriginalShapeFile))
-        exit()
 
 # extract the filename from the path of the original shape file and prefix with 'projected'
 # for the projected shape file name
@@ -93,9 +92,13 @@ projectedWatershedShapeFile = os.path.join(filePath, projectedWatershedShapeFile
 
 if not bufferSize.isdigit():
     print('Exception')
-    raise Exception("Exception: Specified buffer size ({0}) is invalid. Buffer size needs to be a "
+    sys.exit("Exception: Specified buffer size ({0}) is invalid. Buffer size needs to be a "
                     "number.".format(bufferSize))
-    exit()
+
+if float(bufferSize) <= 0:
+    print('Exception')
+    sys.exit("Exception: Specified buffer size ({0}) is invalid. Buffer size needs to be a "
+                    "number greater than zero.".format(bufferSize))
 
 try:
     # check if provided DEM file exists
@@ -124,8 +127,6 @@ try:
     if not demCS:
         # set output coordinate system if DEM file does not have coordinate system
         outCS = arcpy.SpatialReference('NAD 1983 UTM Zone 12N')
-    elif not 'NAD 1983' in demCS:
-        raise Exception('Input DEM geographic coordinate system:%s is not supported.', demCS)
     else:
         outCS = arcpy.SpatialReference(demCS)
 
@@ -136,34 +137,25 @@ try:
     wsCS = wsCS.replace("_", " ")
     print(wsCS)
 
-    # determine transform method to be used
-    transformMethod = ''
-    if 'WGS 1984' in wsCS:
-        transformMethod = 'WGS_1984_(ITRF00)_To_NAD_1983'
-    elif 'NAD 1927' in wsCS:
-        transformMethod = 'NAD_1927_To_NAD_1983_NADCON'
-    elif 'NAD 1983' in wsCS:
-        # here we assume the input watershed file has the same coordinate system datum as the DEM
-        # so no transform method needed
-        transformMethod = ''
-    elif wsCS == "Unknown":
+    # if the watershed file does not have a geo-coordinate raise exception
+    if wsCS == "Unknown":
         raise Exception('Input watershed has unknown geographic coordinate system.')
-    else:
-        raise Exception('Input watershed geographic coordinate system:%s is not supported.', wsCS)
 
-    # run the project tool
-    if len(transformMethod) == 0:
+    try:
+        # run the project tool
         arcpy.Project_management(watershedOriginalShapeFile, projectedWatershedShapeFile, outCS)
-    else:
-        arcpy.Project_management(watershedOriginalShapeFile, projectedWatershedShapeFile, outCS, transformMethod)
-
-    print('projected watershed file created:' + projectedWatershedShapeFile)
+        print('projected watershed file created:' + projectedWatershedShapeFile)
+    except arcpy.ExecuteError:
+        raise Exception("Failed to project the provided watershed file." + arcpy.GetMessage(2))
 
     # run buffer tool
     bufferSize = str(bufferSize) + ' Meters'
-    arcpy.Buffer_analysis(projectedWatershedShapeFile, bufferedWatershedShapeFile,
+    try:
+        arcpy.Buffer_analysis(projectedWatershedShapeFile, bufferedWatershedShapeFile,
                           bufferSize, "FULL", "ROUND", "NONE", "")
-    print('Buffered watershed shape file was created:' + bufferedWatershedShapeFile)
+        print('Buffered watershed shape file was created:' + bufferedWatershedShapeFile)
+    except arcpy.ExecuteError:
+        raise Exception("Failed to add buffer to the projected watershed file." + arcpy.GetMessage(2))
 
     # run Feature to Raster conversion
     # Note: The grid size of the output raster file(bufferedWatershedRasterFile) will be same as the referenceDEMFile
